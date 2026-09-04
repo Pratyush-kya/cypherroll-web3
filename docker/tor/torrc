@@ -1,0 +1,14 @@
+# CypherRoll Onion Service v3 Configuration
+SocksPort 0
+Log notice stdout
+DataDirectory /var/lib/tor
+
+# Tor Hidden Service v3 Routing
+HiddenServiceDir /var/lib/tor/cypherroll_onion/
+HiddenServiceVersion 3
+HiddenServicePort 80 nginx:80
+
+# Anti-Censorship & Privacy Safeguards
+SafeLogging 1
+NumEntryGuards 8
+PublishServerDescriptor 0
