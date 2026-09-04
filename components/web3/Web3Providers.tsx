@@ -31,10 +31,19 @@ const wagmiConfig = createConfig({
   ssr: true,
 });
 
-const queryClient = new QueryClient();
-
 export default function Web3Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            refetchOnWindowFocus: false,
+            retry: false,
+          },
+        },
+      })
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -42,10 +51,14 @@ export default function Web3Providers({ children }: { children: React.ReactNode 
 
   // Solana configuration
   const endpoint = useMemo(() => clusterApiUrl('devnet'), []);
-  const solanaWallets = useMemo(() => [
-    new PhantomWalletAdapter(),
-    new SolflareWalletAdapter(),
-  ], []);
+  const solanaWallets = useMemo(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      return [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
+    } catch {
+      return [];
+    }
+  }, []);
 
   // Custom RainbowKit Cyberpunk Theme
   const customTheme = darkTheme({
@@ -65,7 +78,7 @@ export default function Web3Providers({ children }: { children: React.ReactNode 
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider theme={customTheme}>
           <SafeConnectionProvider endpoint={endpoint}>
-            <SafeWalletProvider wallets={solanaWallets} autoConnect>
+            <SafeWalletProvider wallets={solanaWallets} autoConnect={false}>
               <SafeWalletModalProvider>
                 {children}
               </SafeWalletModalProvider>
