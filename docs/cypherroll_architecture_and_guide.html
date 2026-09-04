@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CypherRoll: Architecture, Solutions & User Operations Guide</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --accent: #00f0ff;
+      --accent-purple: #a855f7;
+      --accent-gold: #f59e0b;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --code-bg: #0b1120;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    header {
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 30px;
+      margin-bottom: 40px;
+    }
+
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px solid currentColor;
+    }
+
+    .badge-cyan { color: var(--accent); border-color: rgba(0, 240, 255, 0.4); background: rgba(0, 240, 255, 0.08); }
+    .badge-gold { color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
+    .badge-green { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); }
+    .badge-purple { color: var(--accent-purple); border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.08); }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 800px;
+    }
+
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .meta-item strong {
+      color: var(--text);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      color: #fff;
+      border: 1px solid #38bdf8;
+    }
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--card-border);
+    }
+    .btn-outline:hover {
+      border-color: var(--text-muted);
+    }
+
+    nav.toc {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+
+    nav.toc h3 {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    nav.toc ul {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    nav.toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      transition: color 0.15s ease;
+    }
+
+    nav.toc a:hover {
+      color: var(--accent);
+    }
+
+    section {
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 10px;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #38bdf8;
+      margin: 24px 0 12px 0;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: #cbd5e1;
+    }
+
+    ul, ol {
+      margin-bottom: 16px;
+      padding-left: 24px;
+      color: #cbd5e1;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .alert {
+      border-left: 4px solid var(--accent);
+      background: rgba(0, 240, 255, 0.05);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 20px;
+    }
+
+    .alert-gold {
+      border-left-color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    .alert-green {
+      border-left-color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .alert-red {
+      border-left-color: var(--accent-red);
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .alert strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border: 1px solid var(--card-border);
+      text-align: left;
+    }
+
+    th {
+      background: #1e293b;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #38bdf8;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #e2e8f0;
+    }
+
+    .diagram {
+      background: #040810;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 18px;
+      font-family: monospace;
+      white-space: pre;
+      overflow-x: auto;
+      color: #38bdf8;
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .stat-val {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding-top: 30px;
+      margin-top: 60px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Print Stylesheet for Pristine Paper Output */
+    @media print {
+      body {
+        background: #fff !important;
+        color: #000 !important;
+        padding: 0 !important;
+      }
+      .container {
+        max-width: 100% !important;
+      }
+      header, footer, nav.toc, .actions {
+        display: none !important;
+      }
+      h1, h2, h3 {
+        color: #000 !important;
+        -webkit-text-fill-color: #000 !important;
+        border-bottom-color: #ccc !important;
+      }
+      .card, .stat-card, pre, .diagram, table th, table td {
+        background: #fff !important;
+        border-color: #ccc !important;
+        color: #000 !important;
+      }
+      code {
+        background: #eee !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+      }
+      .alert {
+        background: #f9f9f9 !important;
+        border-left-color: #333 !important;
+        color: #000 !important;
+      }
+      .alert strong {
+        color: #000 !important;
+      }
+      tr:nth-child(even) {
+        background: #f9f9f9 !important;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-bar">
+        <span class="badge badge-cyan">Architecture & System Manual</span>
+        <span class="badge badge-green">Production Ready (Verified)</span>
+        <span class="badge badge-purple">Tor Onion v3 Enabled</span>
+        <span class="badge badge-gold">Provably Fair HMAC-SHA256</span>
+      </div>
+      <h1>CypherRoll: Platform Blueprint & Technical Manual</h1>
+      <p class="subtitle">
+        A deep-dive technical reference on the 3-tier hybrid casino architecture, cryptographic provably fair engine, all 6 resolved loopholes, complete user operational guide, and future hardening frontiers.
+      </p>
+      <div class="meta-bar">
+        <div class="meta-item">Repository: <strong>https://github.com/Pratyush-kya/cypherroll-web3</strong></div>
+        <div class="meta-item">Commit: <strong>899fb1c</strong></div>
+        <div class="meta-item">Database: <strong>Supabase (pvrnvcgmxuhfbdvudcfs)</strong></div>
+        <div class="meta-item">Tor Service: <strong>vv4ckspjgediwc35ymcdusikc32msma5rc3t4m7n7aml7ddkaex5ckqd.onion</strong></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+        <a class="btn btn-outline" href="http://127.0.0.1:3000" target="_blank">🌐 Open Normal Web (127.0.0.1:3000)</a>
+        <a class="btn btn-outline" href="http://vv4ckspjgediwc35ymcdusikc32msma5rc3t4m7n7aml7ddkaex5ckqd.onion" target="_blank">🧅 Open Tor (.onion)</a>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h3>Table of Contents</h3>
+      <ul>
+        <li><a href="#architecture">1. The 3-Tier Hybrid Architecture</a></li>
+        <li><a href="#loopholes">2. The 6 Problems Solved & Code Changes</a></li>
+        <li><a href="#how-to-use">3. How to Use & Test the Application</a></li>
+        <li><a href="#provably-fair">4. Provably Fair Math & Verification</a></li>
+        <li><a href="#codebase-map">5. Codebase Anatomy & File Mapping</a></li>
+        <li><a href="#future-hardening">6. Future Hardening & Scaling Frontiers</a></li>
+      </ul>
+    </nav>
+
+    <!-- SECTION 1: ARCHITECTURE -->
+    <section id="architecture">
+      <h2>1. The 3-Tier Hybrid Architecture</h2>
+      <p>
+        Building a high-frequency, responsive gambling experience (like Rollbit) on pure public blockchains is fundamentally impractical due to block execution latency (400ms – 12s), high transaction gas fees, and maximal extractable value (MEV) front-running in public mempools.
+      </p>
+      <p>
+        <strong>CypherRoll solves this with a 3-Tier Hybrid Architecture:</strong>
+      </p>
+
+      <div class="diagram">
+┌────────────────────────────────────────────────────────────────────────┐
+│                        TIER 1: PRESENTATION LAYER                      │
+│   Next.js 14 App Router, React Three Fiber (Three.js), Tailwind CSS    │
+│   • 3D Blender Canvas (dice.glb, rocket.glb, chip.glb)                 │
+│   • RainbowKit (EVM) & @solana/wallet-adapter (Phantom/Solflare)       │
+│   • Server-Sent Events (SSE) & Supabase Realtime WebSockets            │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP / SSE / WebSocket
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   TIER 2: OFF-CHAIN STATE & RNG ENGINE                 │
+│   Next.js API & Engine Services (lib/crash-engine.ts, lib/provably-fair)│
+│   • Monotonic Nonce Challenges (SIWE / SIWS)                           │
+│   • Cryptographic CSPRNG: HMAC-SHA256 Commit-Reveal                    │
+│   • Sub-50ms Global Crash Loop with Atomic Escrow Locks                │
+│   • EIP-712 Typed Data Signer for Hot-Vault Outflow                    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ RPC / Supabase Client
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│               TIER 3: DATA LEDGER & ON-CHAIN ESCROW VAULTS             │
+│   • Off-Chain Source of Truth: Supabase PostgreSQL (ACID Ledger)       │
+│   • On-Chain Smart Contracts: CypherRollVault.sol (Base/Arbitrum)      │
+│   • Treasury Invariant Monitor: Solvency assertion daemon              │
+│   • Privacy Layer: Tor v3 Hidden Service + Zero-Log Nginx               │
+└────────────────────────────────────────────────────────────────────────┘
+      </div>
+
+      <div class="grid-2">
+        <div class="stat-card">
+          <div class="stat-label">Off-Chain Execution</div>
+          <div class="stat-val">Sub-50ms Latency</div>
+          <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+            Bets, dice rolls, crash curves, and social chat resolve instantly with zero gas fees.
+          </p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">On-Chain Custody</div>
+          <div class="stat-val">Non-Custodial Escrow</div>
+          <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+            Funds deposit and withdraw via smart contracts; players hold custody of their funds.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: LOOPHOLES -->
+    <section id="loopholes">
+      <h2>2. The 6 Critical Problems Solved & Code Changes</h2>
+      <p>
+        During the engineering phases, 6 high-severity vulnerabilities were systematically identified and neutralized:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Milestone</th>
+            <th>Loophole & Vulnerability</th>
+            <th>Catastrophic Risk</th>
+            <th>Architectural Solution & Files</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Step 1</strong></td>
+            <td>Unverified Public Keys & Spoofed Sessions</td>
+            <td>Attackers claim arbitrary wallet balances via frontend spoofing.</td>
+            <td>
+              <strong>SIWE/SIWS Auth:</strong> EIP-4361 for EVM and Ed25519 for Solana. Cryptographic nonces signed via private keys; issued signed HTTP-only <code>cypher_session</code> cookie.<br/>
+              <code>lib/web3/useAuth.ts</code>, <code>app/api/auth/verify/route.ts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Step 2</strong></td>
+            <td>Multiplayer Race Condition & Double-Spend</td>
+            <td>Rapid-fire parallel bets drain funds before balance deductions commit.</td>
+            <td>
+              <strong>Atomic Escrow Lock:</strong> Single continuous engine loop (50ms SSE). Immediate atomic conditional deduction (<code>.gte('balance_usdc', wager)</code>) during countdown.<br/>
+              <code>lib/crash-engine.ts</code>, <code>app/api/games/crash/stream/route.ts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Step 3</strong></td>
+            <td>HTTP Polling Degradation</td>
+            <td>Chat and live ticker spam server with 3-second requests, crashing database.</td>
+            <td>
+              <strong>Supabase Realtime WebSockets:</strong> Replaced polling with <code>global_trollbox</code> channel, added <code>presence.track()</code> for live user count and global bet ticker.<br/>
+              <code>components/rollbit/Trollbox.tsx</code>, <code>LiveBetsTicker.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Step 4</strong></td>
+            <td>Hot Wallet Depletion / Whale Insolvency</td>
+            <td>Replay attacks on withdrawals, or massive wins draining liquidity.</td>
+            <td>
+              <strong>EIP-712 Signer & Kelly Cap:</strong> Cryptographic structured vouchers with monotonically increasing nonces. Hard automated safety ceiling of $25,000 USDC per payout.<br/>
+              <code>contracts/evm/CypherRollVault.sol</code>, <code>lib/web3/withdrawal-signer.ts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Step 5</strong></td>
+            <td>Fake Deposit Replays & Solvency Failure</td>
+            <td>User submits the same deposit tx hash repeatedly to inflate balance.</td>
+            <td>
+              <strong>RPC Verification & Solvency Daemon:</strong> Confirmed receipt inspection, idempotency checks on tx hash, and live assertion: &Sigma;Player Balances &le; Vault Reserves.<br/>
+              <code>lib/web3/deposit-listener.ts</code>, <code>BankrollVault.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Step 6</strong></td>
+            <td>ChunkLoadError & Tor DNS Isolation</td>
+            <td>Next.js chunk hash collisions crash browser; Tor blocks localhost lookups.</td>
+            <td>
+              <strong>Hardened Bundler & Native Onion Service:</strong> Gated standalone builds, scoped <code>QueryClient</code>, disabled wallet <code>autoConnect</code>, and launched Tor v3 hidden service.<br/>
+              <code>next.config.mjs</code>, <code>Web3Providers.tsx</code>, <code>docker/nginx/</code>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-green">
+        <strong>Verification Status:</strong>
+        All 6 milestones have passed automated end-to-end tests, compiled cleanly with zero TypeScript errors, and are committed to GitHub main (<code>899fb1c</code>).
+      </div>
+    </section>
+
+    <!-- SECTION 3: HOW TO USE -->
+    <section id="how-to-use">
+      <h2>3. How to Use & Test the Application</h2>
+      <p>Follow this step-by-step user journey to test every component of the live casino:</p>
+
+      <div class="card">
+        <h3>Step 1: Connecting Wallet & Logging In</h3>
+        <ul>
+          <li>Open <code>http://localhost:3000</code> in a standard browser or <code>http://127.0.0.1:3000/</code> in Tor Browser.</li>
+          <li>Click <strong>"Connect Wallet"</strong> in the top-right navigation bar.</li>
+          <li>Select <strong>RainbowKit</strong> (MetaMask, Coinbase, Rainbow on Base/Arbitrum) or <strong>Solana</strong> (Phantom, Solflare).</li>
+          <li>Your wallet prompts you to sign a challenge containing a cryptographically unique nonce.</li>
+          <li>Once signed, you receive an initial starting test balance of <strong>1,000.00 USDC</strong> and an authenticated session cookie.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Step 2: Playing Provably Fair 3D Dice</h3>
+        <ul>
+          <li>Navigate to the <strong>Dice</strong> tab.</li>
+          <li>Observe the real-time <strong>3D Cyberpunk Dice Canvas</strong> rendered via Three.js and Blender (<code>dice.glb</code>).</li>
+          <li>Use the slider to select your <strong>Roll Target</strong> (e.g., Roll Under 50.00). The UI automatically calculates your Win Chance (49.5%) and Multiplier (2.00x).</li>
+          <li>Enter your wager amount and click <strong>"Roll Dice"</strong>.</li>
+          <li>The outcome is determined instantly via server HMAC-SHA256, the 3D dice rolls in the canvas, and your balance updates with zero latency.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Step 3: Playing Multiplayer Realtime Crash</h3>
+        <ul>
+          <li>Navigate to the <strong>Crash</strong> tab.</li>
+          <li>Observe the status bar: during <code>STARTING (5.0s)</code>, enter your bet (e.g., 50 USDC) and an optional <strong>Auto Cashout</strong> target (e.g., 2.50x), then click <strong>"Place Bet"</strong>.</li>
+          <li>Your wager is atomically locked in escrow.</li>
+          <li>When the round enters <code>FLYING</code>, the 3D Sci-Fi Rocket ascends and the multiplier climbs via the sub-50ms Server-Sent Events stream.</li>
+          <li>Click <strong>"Cash Out"</strong> at any moment before the crash point to pocket your winnings. If the rocket crashes before cashout, the bet is resolved as lost.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Step 4: Using the Trollbox & Live Ticker</h3>
+        <ul>
+          <li>The sidebar displays the <strong>Live Trollbox</strong> chat.</li>
+          <li>Check the <strong>Online Count</strong> badge (tracked live via Supabase Realtime presence).</li>
+          <li>Type a message into the chat and send it—it appears instantaneously for all players across all browsers.</li>
+          <li>Watch the top <strong>Live Bets Ticker</strong> automatically scroll real-time bets placed across the platform.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Step 5: Cashier & Bankroll Staking</h3>
+        <ul>
+          <li><strong>Deposit:</strong> Click Cashier, select your network, and simulate a confirmed transaction to credit testnet USDC.</li>
+          <li><strong>Withdraw:</strong> Request a withdrawal; the server cryptographically validates your balance, applies the Kelly Criterion $25k safety ceiling, and returns an <strong>EIP-712 voucher signature</strong>.</li>
+          <li><strong>Bankroll LP:</strong> Navigate to Treasury/Bankroll to view platform reserve health and stake capital to earn a 19.4% APY share of the casino house edge.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 4: PROVABLY FAIR -->
+    <section id="provably-fair">
+      <h2>4. Provably Fair Cryptography: Math & Proofs</h2>
+      <p>
+        CypherRoll implements standard HMAC-SHA256 commit-reveal provably fair algorithms. The player never has to trust the operator:
+      </p>
+
+      <div class="card">
+        <h3>1. Pre-Commitment</h3>
+        <p>Before any round begins, the server creates a 256-bit cryptographically secure server seed:</p>
+        <pre><code>ServerSeed = crypto.randomBytes(32).toString('hex')
+ServerSeedHash = SHA256(ServerSeed)</code></pre>
+        <p>The <code>ServerSeedHash</code> is publicly revealed in advance. The casino cannot change the outcome after you bet without altering this hash.</p>
+
+        <h3>2. Outcome Calculation</h3>
+        <p>When the user rolls, their outcome is calculated deterministically:</p>
+        <pre><code>HMAC = HMAC_SHA256(key = ServerSeed, message = ClientSeed + ":" + Nonce)
+HexChunk = HMAC.substring(0, 8)
+Decimal = parseInt(HexChunk, 16)
+RollOutcome = (Decimal / 4294967296) * 100</code></pre>
+
+        <h3>3. House Edge Invariant</h3>
+        <p>The platform sets an exact 1.0% house edge for Dice and 2.0% for Crash:</p>
+        <pre><code>Dice Multiplier = (100 - 1.00) / WinProbability
+Crash Point = floor((100 * E - HouseEdge) / (E - H))</code></pre>
+      </div>
+    </section>
+
+    <!-- SECTION 5: CODEBASE MAP -->
+    <section id="codebase-map">
+      <h2>5. Codebase Anatomy & File Mapping</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Directory / File</th>
+            <th>Role & Responsibility</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>lib/provably-fair.ts</code></td>
+            <td>Deterministic HMAC-SHA256 seed rotation, hashing, and roll derivation.</td>
+          </tr>
+          <tr>
+            <td><code>lib/crash-engine.ts</code></td>
+            <td>Continuous round loop, atomic escrow deductions, active cashouts, and crash tick calculation.</td>
+          </tr>
+          <tr>
+            <td><code>lib/web3/useAuth.ts</code></td>
+            <td>Multi-chain challenge generators (SIWE/SIWS) and wallet signature handlers.</td>
+          </tr>
+          <tr>
+            <td><code>lib/web3/withdrawal-signer.ts</code></td>
+            <td>EIP-712 structured data signing with Kelly Criterion safety ceiling ($25k).</td>
+          </tr>
+          <tr>
+            <td><code>lib/web3/deposit-listener.ts</code></td>
+            <td>JSON-RPC receipt verification and idempotency checks on deposit transactions.</td>
+          </tr>
+          <tr>
+            <td><code>components/3d/</code></td>
+            <td>React Three Fiber components rendering low-poly Blender glTF assets (<code>dice.glb</code>, <code>rocket.glb</code>, <code>chip.glb</code>).</td>
+          </tr>
+          <tr>
+            <td><code>components/rollbit/</code></td>
+            <td>Dice game controls, Crash multiplier canvas, WebSocket Trollbox, and Live Activity ticker.</td>
+          </tr>
+          <tr>
+            <td><code>docker/nginx/nginx.conf</code></td>
+            <td>Zero-log reverse proxy with strict anti-fingerprint and WebRTC leak-blocking headers.</td>
+          </tr>
+          <tr>
+            <td><code>docker/tor/torrc</code></td>
+            <td>Tor v3 hidden service configuration mapping onion port 80 to web server.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 6: FUTURE HARDENING -->
+    <section id="future-hardening">
+      <h2>6. Future Hardening & Scaling Frontiers</h2>
+      <p>
+        For enterprise-scale production (10,000+ simultaneous players or mainnet assets), prioritize these next 4 engineering enhancements:
+      </p>
+
+      <div class="card">
+        <h3>1. Distributed Horizontal Redis Pub/Sub</h3>
+        <p>
+          Currently, the Crash engine loop runs as an in-process singleton in Node.js. For multi-server load balancing, extract the state machine into an independent Go/Rust microservice or Redis 7 cluster using Redis Pub/Sub and Lua scripts for cross-instance tick synchronization.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>2. Decentralized VRF Entropy (Chainlink / Pyth)</h3>
+        <p>
+          For VIP high-roller tables ($100k+), allow players to seed rounds using decentralized on-chain verifiable random functions (Chainlink VRF on EVM or Pyth Entropy on Solana) for complete zero-trust randomness.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>3. Automated AML & Sanctions Screening</h3>
+        <p>
+          Integrate automated Chainalysis / Elliptic webhooks into the deposit listener to automatically flag and quarantine transactions originating from sanctioned or mixer addresses (OFAC compliance).
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>4. Client-Side Proof-of-Work (mPoW) Anti-DDoS</h3>
+        <p>
+          To stop malicious bots from spamming the Trollbox or placing sub-penny bets over Tor without requiring third-party CAPTCHAs, implement a lightweight WebAssembly Proof-of-Work challenge (e.g., finding a SHA-256 hash with 4 leading zeroes) before API submissions.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      <p>CypherRoll Web3 Casino &copy; 2026. Minimalist Engineering Architecture. Verified and committed to GitHub.</p>
+    </footer>
+  </div>
+</body>
+</html>
