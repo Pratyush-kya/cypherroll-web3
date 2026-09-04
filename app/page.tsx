@@ -7,11 +7,12 @@ import CrashGame from '@/components/games/CrashGame';
 import BankrollVault from '@/components/web3/BankrollVault';
 import FAQSection from '@/components/rollbit/FAQSection';
 import Trollbox from '@/components/rollbit/Trollbox';
+import LiveBetsTicker from '@/components/rollbit/LiveBetsTicker';
 import VIPRakebackModal from '@/components/rollbit/VIPRakebackModal';
 import CashierModal from '@/components/rollbit/CashierModal';
 import SecurityModal from '@/components/rollbit/SecurityModal';
 import { useAuth } from '@/lib/web3/useAuth';
-import { Shield, Sparkles, TrendingUp, Cpu, Lock, Activity } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function CasinoHome() {
   const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'VAULT'>('DICE');
@@ -137,32 +138,8 @@ export default function CasinoHome() {
       {/* Interactive FAQ Section */}
       <FAQSection />
 
-      {/* Live Global Activity Ticker */}
-      <div className="border-t border-slate-900 bg-slate-950/80 py-3 mt-8">
-        <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <span className="uppercase tracking-wider">Live Network Activity:</span>
-          </div>
-
-          <div className="flex items-center gap-4 overflow-x-auto text-slate-300">
-            <span className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-              <span className="text-primary">0x4a...e1</span> won <strong>$148.50</strong> on CypherDice (4.95x)
-            </span>
-            <span className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-              <span className="text-purple-400">7XwZ...9q</span> cashed out <strong>$412.00</strong> on CypherCrash (8.24x)
-            </span>
-            <span className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-              <span className="text-primary">0x99...f4</span> won <strong>$39.20</strong> on CypherDice (1.98x)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-slate-500">
-            <Lock className="w-3.5 h-3.5 text-primary" />
-            <span>Zero IP Logging • Non-Custodial</span>
-          </div>
-        </div>
-      </div>
+      {/* Live Global Activity Ticker (Supabase Realtime Synced) */}
+      <LiveBetsTicker />
 
       {/* Modals */}
       <CashierModal

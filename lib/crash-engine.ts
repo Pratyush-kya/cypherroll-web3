@@ -1,5 +1,5 @@
 import { calculateCrashPoint, generateServerSeed } from '@/lib/provably-fair';
-import { settleCrashCashout, settleCrashBust } from '@/lib/supabase';
+import { settleCrashCashout, settleCrashBust, broadcastLiveBet } from '@/lib/supabase';
 
 export interface CrashPlayerBet {
   wallet: string;
@@ -167,6 +167,17 @@ class CrashEngine {
       clientSeed: this.clientSeed,
       nonce: this.nonce - 1,
       rakebackEarned: parseFloat(((bet.wager * 0.02) * 0.15).toFixed(4)),
+    });
+
+    // Broadcast win to global live bets ticker
+    broadcastLiveBet({
+      wallet,
+      gameType: 'CRASH',
+      wager: bet.wager,
+      multiplier: currentMulti,
+      payout,
+      profit,
+      won: true,
     });
 
     this.notifyListeners();

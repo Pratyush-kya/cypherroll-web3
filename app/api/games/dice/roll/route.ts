@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrCreatePlayer, recordAtomicBet } from '@/lib/supabase';
+import { getOrCreatePlayer, recordAtomicBet, broadcastLiveBet } from '@/lib/supabase';
 import { calculateDiceRoll, getDiceMultiplier } from '@/lib/provably-fair';
 import { verifySession } from '@/lib/auth';
 
@@ -70,6 +70,17 @@ export async function POST(req: Request) {
       clientSeed: currentClientSeed,
       nonce: currentNonce,
       rakebackEarned,
+    });
+
+    // 5. Broadcast live bet in realtime across the platform
+    broadcastLiveBet({
+      wallet: effectiveWallet,
+      gameType: 'DICE',
+      wager,
+      multiplier,
+      payout,
+      profit,
+      won,
     });
 
     return NextResponse.json({

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, X, Shield, Sparkles, User, ChevronRight } from 'lucide-react';
+import { MessageSquare, Send, X, Shield, Sparkles, User, ChevronRight, Users } from 'lucide-react';
 import { truncateHash } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 interface ChatMessage {
   id: string;
@@ -31,6 +32,7 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [onlineCount, setOnlineCount] = useState<number>(24);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async () => {
@@ -41,15 +43,56 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
         setMessages(data.messages);
       }
     } catch {
-      // Ignore network errors in poll
+      // Ignore network errors
     }
   };
 
   useEffect(() => {
+    // 1. Initial snapshot fetch
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // 2. Realtime WebSocket subscription via Supabase
+    if (supabase) {
+      const client = supabase;
+      const channel = client.channel('global_trollbox', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: userWallet || 'anon_' + Math.random().toString(36).substring(7) },
+        },
+      });
+
+      channel
+        .on('broadcast', { event: 'new_message' }, (payload) => {
+          if (payload.payload) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === payload.payload.id)) return prev;
+              return [...prev, payload.payload];
+            });
+          }
+        })
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          const count = Object.keys(state).length;
+          setOnlineCount(Math.max(12, count * 3));
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({
+              wallet: userWallet || 'Anon',
+              online_at: new Date().toISOString(),
+            });
+          }
+        });
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    } else {
+      // Fallback polling if Supabase is offline
+      const interval = setInterval(fetchMessages, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [userWallet]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,7 +131,10 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-primary" />
           <span className="font-heading text-xs font-bold text-foreground">Global Trollbox</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>{onlineCount} Online</span>
+          </span>
         </div>
         <button
           onClick={onClose}

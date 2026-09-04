@@ -429,3 +429,129 @@ export function addMockTrollboxMessage(sender: string, vip: string, message: str
   mockDb.trollbox.push(newMsg);
   return newMsg;
 }
+
+// Persistent Realtime Broadcast Channels (Node server)
+let activityChannel: any = null;
+let trollboxChannel: any = null;
+
+/**
+ * Broadcast live bet across the network in real-time
+ */
+export function broadcastLiveBet(betData: {
+  wallet: string;
+  gameType: string;
+  wager: number;
+  multiplier: number;
+  payout: number;
+  profit: number;
+  won: boolean;
+}) {
+  const client = supabaseAdmin || supabase;
+  if (!client) return;
+
+  try {
+    if (!activityChannel) {
+      activityChannel = client.channel('global_activity');
+      activityChannel.subscribe();
+    }
+    activityChannel.send({
+      type: 'broadcast',
+      event: 'new_bet',
+      payload: {
+        id: Math.random().toString(36).substring(7),
+        wallet_address: betData.wallet,
+        game_type: betData.gameType,
+        wager: betData.wager,
+        target_payout: betData.multiplier,
+        payout: betData.payout,
+        profit: betData.profit,
+        won: betData.won,
+        created_at: new Date().toISOString(),
+      },
+    }).catch(() => {});
+  } catch (err) {
+    console.error('Error broadcasting bet:', err);
+  }
+}
+
+/**
+ * Broadcast chat message across the network in real-time
+ */
+export function broadcastTrollboxMessage(messageData: {
+  id: string;
+  sender_address: string;
+  sender_vip: string;
+  message: string;
+  created_at: string;
+}) {
+  const client = supabaseAdmin || supabase;
+  if (!client) return;
+
+  try {
+    if (!trollboxChannel) {
+      trollboxChannel = client.channel('global_trollbox');
+      trollboxChannel.subscribe();
+    }
+    trollboxChannel.send({
+      type: 'broadcast',
+      event: 'new_message',
+      payload: messageData,
+    }).catch(() => {});
+  } catch (err) {
+    console.error('Error broadcasting chat:', err);
+  }
+}
+
+/**
+ * Fetch recent bets from DB or mock ledger
+ */
+export async function getRecentBets(limit: number = 15) {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data } = await client
+      .from('bets')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (data && data.length > 0) return data;
+  }
+  return [
+    {
+      id: 'mock_1',
+      wallet_address: '0x4a71b48f...e1',
+      game_type: 'DICE',
+      wager: 30,
+      target_payout: 4.95,
+      outcome: 18.2,
+      won: true,
+      payout: 148.50,
+      profit: 118.50,
+      created_at: new Date(Date.now() - 120000).toISOString(),
+    },
+    {
+      id: 'mock_2',
+      wallet_address: '7XwZQm48...9q',
+      game_type: 'CRASH',
+      wager: 50,
+      target_payout: 8.24,
+      outcome: 8.24,
+      won: true,
+      payout: 412.00,
+      profit: 362.00,
+      created_at: new Date(Date.now() - 60000).toISOString(),
+    },
+    {
+      id: 'mock_3',
+      wallet_address: '0x99aBcD1...f4',
+      game_type: 'DICE',
+      wager: 20,
+      target_payout: 1.98,
+      outcome: 41.5,
+      won: true,
+      payout: 39.60,
+      profit: 19.60,
+      created_at: new Date(Date.now() - 15000).toISOString(),
+    },
+    ...mockDb.bets.slice(0, limit),
+  ];
+}

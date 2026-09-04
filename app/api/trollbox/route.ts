@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase, getMockTrollbox, addMockTrollboxMessage } from '@/lib/supabase';
+import { supabase, getMockTrollbox, addMockTrollboxMessage, broadcastTrollboxMessage } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,10 +34,15 @@ export async function POST(req: Request) {
         .select('*')
         .single();
       if (error) throw new Error(error.message);
+
+      // Broadcast over Supabase Realtime WebSocket channel
+      broadcastTrollboxMessage(data);
+
       return NextResponse.json({ message: data });
     }
 
     const newMsg = addMockTrollboxMessage(sender, vip || 'Bronze', message.trim().substring(0, 200));
+    broadcastTrollboxMessage(newMsg);
     return NextResponse.json({ message: newMsg });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });
