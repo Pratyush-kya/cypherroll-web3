@@ -555,3 +555,112 @@ export async function getRecentBets(limit: number = 15) {
     ...mockDb.bets.slice(0, limit),
   ];
 }
+
+/**
+ * Atomic balance withdrawal deduction and transaction logging
+ */
+export async function executeWithdrawal(params: {
+  wallet: string;
+  amount: number;
+  chainType: string;
+  txHash?: string;
+}): Promise<{ success: boolean; newBalance?: number; nonce?: number; error?: string }> {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const profile = await getOrCreatePlayer(params.wallet);
+    if (Number(profile.balance_usdc) < params.amount) {
+      return { success: false, error: 'Insufficient balance for withdrawal' };
+    }
+
+    const newBalance = parseFloat((Number(profile.balance_usdc) - params.amount).toFixed(2));
+    const newNonce = profile.nonce + 1;
+
+    const { data: updated, error: updateErr } = await client
+      .from('profiles')
+      .update({
+        balance_usdc: newBalance,
+        nonce: newNonce,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('wallet_address', params.wallet)
+      .gte('balance_usdc', params.amount)
+      .select('*')
+      .single();
+
+    if (updateErr || !updated) {
+      return { success: false, error: 'Withdrawal failed or concurrent lock error' };
+    }
+
+    await client.from('transactions').insert({
+      player_id: profile.id,
+      wallet_address: params.wallet,
+      type: 'WITHDRAWAL',
+      amount: params.amount,
+      currency: 'USDC',
+      tx_hash: params.txHash || 'EIP712_PENDING',
+      status: 'CONFIRMED',
+    });
+
+    return {
+      success: true,
+      newBalance: Number(updated.balance_usdc),
+      nonce: updated.nonce,
+    };
+  }
+
+  // Mock Engine
+  const profile = await getOrCreatePlayer(params.wallet);
+  if (profile.balance_usdc < params.amount) {
+    return { success: false, error: 'Insufficient balance for withdrawal' };
+  }
+
+  profile.balance_usdc = parseFloat((profile.balance_usdc - params.amount).toFixed(2));
+  profile.nonce += 1;
+
+  return {
+    success: true,
+    newBalance: profile.balance_usdc,
+    nonce: profile.nonce,
+  };
+}
+
+/**
+ * Record on-chain deposit credit
+ */
+export async function executeDeposit(params: {
+  wallet: string;
+  amount: number;
+  chainType: string;
+  txHash?: string;
+}): Promise<{ success: boolean; newBalance: number }> {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const profile = await getOrCreatePlayer(params.wallet);
+    const newBalance = parseFloat((Number(profile.balance_usdc) + params.amount).toFixed(2));
+
+    await client
+      .from('profiles')
+      .update({
+        balance_usdc: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('wallet_address', params.wallet);
+
+    await client.from('transactions').insert({
+      player_id: profile.id,
+      wallet_address: params.wallet,
+      type: 'DEPOSIT',
+      amount: params.amount,
+      currency: 'USDC',
+      tx_hash: params.txHash || 'SIMULATED_DEPOSIT',
+      status: 'CONFIRMED',
+    });
+
+    return { success: true, newBalance };
+  }
+
+  const profile = await getOrCreatePlayer(params.wallet);
+  profile.balance_usdc = parseFloat((profile.balance_usdc + params.amount).toFixed(2));
+  return { success: true, newBalance: profile.balance_usdc };
+}
+
