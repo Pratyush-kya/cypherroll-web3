@@ -41,6 +41,8 @@ export default function CashierModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [voucher, setVoucher] = useState<WithdrawalVoucher | null>(null);
+  const [txHashInput, setTxHashInput] = useState<string>('');
+  const [showTxHashField, setShowTxHashField] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -78,6 +80,35 @@ export default function CashierModal({
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Deposit error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyTxHash = async () => {
+    if (!txHashInput.trim()) return;
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch('/api/cashier/verify-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          txHash: txHashInput.trim(),
+          network: selectedNetwork,
+          walletAddress: userWallet,
+          amount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Deposit verification failed');
+
+      onDepositSuccess(data.amount);
+      setTxHashInput('');
+      onClose();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Verification error');
     } finally {
       setIsSubmitting(false);
     }
@@ -303,6 +334,37 @@ export default function CashierModal({
                   />
                 </div>
 
+                {/* Optional: Verify External Transaction Hash */}
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowTxHashField(!showTxHashField)}
+                    className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1 mb-2"
+                  >
+                    <span>{showTxHashField ? '▲ Hide manual tx verification' : '▼ Already sent on-chain? Paste Tx Hash'}</span>
+                  </button>
+
+                  {showTxHashField && (
+                    <div className="space-y-2 p-3 bg-slate-950 rounded-xl border border-slate-800 animate-in fade-in duration-150 mb-3">
+                      <input
+                        type="text"
+                        placeholder="Paste transaction hash (0x... or Solscan)"
+                        value={txHashInput}
+                        onChange={(e) => setTxHashInput(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyTxHash}
+                        disabled={isSubmitting || !txHashInput.trim()}
+                        className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-heading font-bold text-xs rounded-lg transition-colors"
+                      >
+                        Verify & Credit On-Chain Tx
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={handleDeposit}
                   disabled={isSubmitting || amount <= 0}
@@ -311,7 +373,7 @@ export default function CashierModal({
                   {isSubmitting ? (
                     <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
                   ) : (
-                    <span>Confirm On-Chain Deposit</span>
+                    <span>Simulate Instant On-Chain Deposit</span>
                   )}
                 </button>
               </div>
