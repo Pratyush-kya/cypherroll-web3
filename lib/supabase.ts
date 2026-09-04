@@ -3,13 +3,14 @@ import { generateServerSeed } from '@/lib/provably-fair';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http')
 );
 
 // Fallback in-memory store for local testing without external database setup
-interface MockProfile {
+export interface MockProfile {
   id: string;
   wallet_address: string;
   chain_type: string;
@@ -37,6 +38,18 @@ const mockDb = {
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+export const supabaseAdmin: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
+
+function computeVIPTier(totalWagered: number): string {
+  if (totalWagered >= 50000) return 'Diamond';
+  if (totalWagered >= 10000) return 'Platinum';
+  if (totalWagered >= 2500) return 'Gold';
+  if (totalWagered >= 500) return 'Silver';
+  return 'Bronze';
+}
 
 /**
  * Retrieves player profile or auto-provisions a new account
@@ -167,6 +180,238 @@ export async function recordAtomicBet(params: {
     new_nonce: profile.nonce,
     rakeback: profile.accumulated_rakeback,
   };
+}
+
+/**
+ * Lock wager funds atomically before a Crash round takes off
+ * Prevents double-spending during multiplayer rounds
+ */
+export async function lockPlayerWager(wallet: string, wager: number): Promise<{ success: boolean; newBalance?: number; error?: string }> {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const profile = await getOrCreatePlayer(wallet);
+    if (Number(profile.balance_usdc) < wager) {
+      return { success: false, error: 'Insufficient balance' };
+    }
+
+    const newBalance = parseFloat((Number(profile.balance_usdc) - wager).toFixed(2));
+    const { data, error } = await client
+      .from('profiles')
+      .update({ balance_usdc: newBalance, updated_at: new Date().toISOString() })
+      .eq('wallet_address', wallet)
+      .gte('balance_usdc', wager)
+      .select('balance_usdc')
+      .single();
+
+    if (error || !data) {
+      return { success: false, error: 'Balance deduction failed or race condition' };
+    }
+
+    return { success: true, newBalance: Number(data.balance_usdc) };
+  }
+
+  // Mock In-Memory Engine
+  const profile = await getOrCreatePlayer(wallet);
+  if (profile.balance_usdc < wager) {
+    return { success: false, error: 'Insufficient balance' };
+  }
+  profile.balance_usdc = parseFloat((profile.balance_usdc - wager).toFixed(2));
+  return { success: true, newBalance: profile.balance_usdc };
+}
+
+/**
+ * Refund locked wager if round entry is rejected
+ */
+export async function refundPlayerWager(wallet: string, wager: number): Promise<void> {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data: profile } = await client
+      .from('profiles')
+      .select('balance_usdc')
+      .eq('wallet_address', wallet)
+      .single();
+    if (profile) {
+      await client
+        .from('profiles')
+        .update({ balance_usdc: parseFloat((Number(profile.balance_usdc) + wager).toFixed(2)) })
+        .eq('wallet_address', wallet);
+    }
+    return;
+  }
+  const profile = mockDb.profiles.get(wallet);
+  if (profile) {
+    profile.balance_usdc = parseFloat((profile.balance_usdc + wager).toFixed(2));
+  }
+}
+
+/**
+ * Settle winning cashout in database ledger
+ */
+export async function settleCrashCashout(params: {
+  wallet: string;
+  wager: number;
+  multiplier: number;
+  payout: number;
+  profit: number;
+  serverSeedHash: string;
+  clientSeed: string;
+  nonce: number;
+  rakebackEarned: number;
+}): Promise<{ newBalance: number; vipTier: string; rakeback: number }> {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data: profile } = await client
+      .from('profiles')
+      .select('*')
+      .eq('wallet_address', params.wallet)
+      .single();
+
+    if (!profile) throw new Error('Player profile not found');
+
+    const newBalance = parseFloat((Number(profile.balance_usdc) + params.payout).toFixed(2));
+    const newWagered = parseFloat((Number(profile.total_wagered) + params.wager).toFixed(2));
+    const newWon = parseFloat((Number(profile.total_won) + params.profit).toFixed(2));
+    const newTier = computeVIPTier(newWagered);
+    const newRakeback = parseFloat((Number(profile.accumulated_rakeback) + params.rakebackEarned).toFixed(4));
+    const newNonce = profile.nonce + 1;
+
+    await client
+      .from('profiles')
+      .update({
+        balance_usdc: newBalance,
+        total_wagered: newWagered,
+        total_won: newWon,
+        vip_tier: newTier,
+        accumulated_rakeback: newRakeback,
+        nonce: newNonce,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.id);
+
+    await client.from('bets').insert({
+      player_id: profile.id,
+      wallet_address: params.wallet,
+      game_type: 'CRASH',
+      wager: params.wager,
+      target_payout: params.multiplier,
+      outcome: params.multiplier,
+      won: true,
+      payout: params.payout,
+      profit: params.profit,
+      server_seed_hash: params.serverSeedHash,
+      client_seed: params.clientSeed,
+      nonce: params.nonce,
+    });
+
+    return {
+      newBalance,
+      vipTier: newTier,
+      rakeback: newRakeback,
+    };
+  }
+
+  // Mock Engine
+  const profile = mockDb.profiles.get(params.wallet);
+  if (!profile) throw new Error('Player profile not found');
+  profile.balance_usdc = parseFloat((profile.balance_usdc + params.payout).toFixed(2));
+  profile.total_wagered = parseFloat((profile.total_wagered + params.wager).toFixed(2));
+  profile.total_won = parseFloat((profile.total_won + params.profit).toFixed(2));
+  profile.vip_tier = computeVIPTier(profile.total_wagered);
+  profile.accumulated_rakeback = parseFloat((profile.accumulated_rakeback + params.rakebackEarned).toFixed(4));
+  profile.nonce += 1;
+
+  mockDb.bets.unshift({
+    ...params,
+    gameType: 'CRASH',
+    won: true,
+    outcome: params.multiplier,
+    targetPayout: params.multiplier,
+    id: Math.random().toString(36).substring(7),
+    created_at: new Date().toISOString(),
+  });
+
+  return {
+    newBalance: profile.balance_usdc,
+    vipTier: profile.vip_tier,
+    rakeback: profile.accumulated_rakeback,
+  };
+}
+
+/**
+ * Settle busted bet on crash
+ */
+export async function settleCrashBust(params: {
+  wallet: string;
+  wager: number;
+  crashPoint: number;
+  serverSeedHash: string;
+  clientSeed: string;
+  nonce: number;
+  rakebackEarned: number;
+}): Promise<void> {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data: profile } = await client
+      .from('profiles')
+      .select('*')
+      .eq('wallet_address', params.wallet)
+      .single();
+
+    if (!profile) return;
+
+    // Note: balance was already locked/deducted during lockPlayerWager
+    const newWagered = parseFloat((Number(profile.total_wagered) + params.wager).toFixed(2));
+    const newTier = computeVIPTier(newWagered);
+    const newRakeback = parseFloat((Number(profile.accumulated_rakeback) + params.rakebackEarned).toFixed(4));
+    const newNonce = profile.nonce + 1;
+
+    await client
+      .from('profiles')
+      .update({
+        total_wagered: newWagered,
+        vip_tier: newTier,
+        accumulated_rakeback: newRakeback,
+        nonce: newNonce,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.id);
+
+    await client.from('bets').insert({
+      player_id: profile.id,
+      wallet_address: params.wallet,
+      game_type: 'CRASH',
+      wager: params.wager,
+      target_payout: params.crashPoint,
+      outcome: params.crashPoint,
+      won: false,
+      payout: 0,
+      profit: -params.wager,
+      server_seed_hash: params.serverSeedHash,
+      client_seed: params.clientSeed,
+      nonce: params.nonce,
+    });
+    return;
+  }
+
+  // Mock Engine
+  const profile = mockDb.profiles.get(params.wallet);
+  if (!profile) return;
+  profile.total_wagered = parseFloat((profile.total_wagered + params.wager).toFixed(2));
+  profile.vip_tier = computeVIPTier(profile.total_wagered);
+  profile.accumulated_rakeback = parseFloat((profile.accumulated_rakeback + params.rakebackEarned).toFixed(4));
+  profile.nonce += 1;
+
+  mockDb.bets.unshift({
+    ...params,
+    gameType: 'CRASH',
+    won: false,
+    payout: 0,
+    profit: -params.wager,
+    outcome: params.crashPoint,
+    targetPayout: params.crashPoint,
+    id: Math.random().toString(36).substring(7),
+    created_at: new Date().toISOString(),
+  });
 }
 
 export function getMockTrollbox() {
