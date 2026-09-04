@@ -37,6 +37,8 @@ export default function LiveBetsTicker() {
     };
 
     fetchRecentBets();
+    const interval = setInterval(fetchRecentBets, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   // 2. Realtime WebSocket subscription for live bets

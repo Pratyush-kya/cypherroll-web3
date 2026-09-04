@@ -144,6 +144,15 @@ export default function Navbar({
             <MessageSquare className="w-4 h-4" />
           </button>
 
+          {/* Guest / Tor Session Balance Indicator */}
+          {!isAuthenticated && (
+            <div className="hidden md:flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px] font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span className="text-slate-400">Demo Balance:</span>
+              <span className="font-bold text-primary">$1,000.00</span>
+            </div>
+          )}
+
           {/* Chain Selector */}
           <div className="hidden lg:flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-[11px] font-mono">
             <button

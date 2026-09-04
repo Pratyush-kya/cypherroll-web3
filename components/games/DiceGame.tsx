@@ -116,7 +116,12 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
 
         {/* 3D WebGL Canvas */}
         <div className="relative flex-1 flex items-center justify-center my-2">
-          <DiceCanvas isRolling={isRolling} targetRoll={target} />
+          <DiceCanvas
+            isRolling={isRolling}
+            targetRoll={target}
+            lastRoll={lastRoll}
+            lastWon={lastWon}
+          />
 
           {/* Large Roll Result Callout */}
           {lastRoll !== null && (

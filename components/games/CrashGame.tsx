@@ -189,8 +189,8 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
             gameState={status}
           />
 
-          {/* Center Display */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+          {/* Multiplier / Round Status Display Header */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 text-center pointer-events-none z-10">
             {status === 'STARTING' ? (
               <div>
                 <span className="text-4xl lg:text-5xl font-heading font-black tracking-tight text-primary">

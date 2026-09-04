@@ -84,11 +84,15 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
           }
         });
 
+      // Resilient Tor background polling interval (ensures chat updates even if WS is proxied/blocked)
+      const pollInterval = setInterval(fetchMessages, 4000);
+
       return () => {
+        clearInterval(pollInterval);
         client.removeChannel(channel);
       };
     } else {
-      // Fallback polling if Supabase is offline
+      // Fallback polling if Supabase is unconfigured
       const interval = setInterval(fetchMessages, 3000);
       return () => clearInterval(interval);
     }
