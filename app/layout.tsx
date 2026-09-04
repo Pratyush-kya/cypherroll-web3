@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Web3Providers from '@/components/web3/Web3Providers';
 
 export const metadata: Metadata = {
   title: 'CypherRoll | Autonomous Provably Fair Web3 Casino',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-background text-foreground antialiased selection:bg-primary selection:text-slate-950">
-        {children}
+        <Web3Providers>
+          {children}
+        </Web3Providers>
       </body>
     </html>
   );

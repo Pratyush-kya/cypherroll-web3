@@ -10,18 +10,42 @@ import Trollbox from '@/components/rollbit/Trollbox';
 import VIPRakebackModal from '@/components/rollbit/VIPRakebackModal';
 import CashierModal from '@/components/rollbit/CashierModal';
 import SecurityModal from '@/components/rollbit/SecurityModal';
-import { Shield, Sparkles, TrendingUp, Cpu, Lock, Activity, ShieldCheck, HelpCircle } from 'lucide-react';
+import { useAuth } from '@/lib/web3/useAuth';
+import { Shield, Sparkles, TrendingUp, Cpu, Lock, Activity } from 'lucide-react';
 
 export default function CasinoHome() {
   const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'VAULT'>('DICE');
-  const [userWallet, setUserWallet] = useState<string>('7XwZ...9q2P');
+  const {
+    user,
+    setUser,
+    isAuthenticated,
+    isAuthenticating,
+    solanaConnected,
+    solanaPublicKey,
+    evmConnected,
+    evmAddress,
+    signInSolana,
+    signInEVM,
+    signOut,
+  } = useAuth();
+
   const [balance, setBalance] = useState<number>(1000);
   const [vipTier, setVipTier] = useState<string>('Bronze');
-  const [accumulatedRakeback, setAccumulatedRakeback] = useState<number>(12.45);
-  const [totalWagered, setTotalWagered] = useState<number>(340);
+  const [accumulatedRakeback, setAccumulatedRakeback] = useState<number>(0);
+  const [totalWagered, setTotalWagered] = useState<number>(0);
   const [serverSeedHash, setServerSeedHash] = useState<string>('0304473b50e479dcb7b54818671aa40746a0dabd4b7427c5cf358253e7d7426f');
   const [clientSeed, setClientSeed] = useState<string>('player_lucky_seed');
   const [nonce, setNonce] = useState<number>(1);
+
+  // Sync state when authenticated profile loads
+  useEffect(() => {
+    if (user) {
+      setBalance(user.balance);
+      setVipTier(user.vipTier);
+      setAccumulatedRakeback(user.accumulatedRakeback);
+      setTotalWagered(user.totalWagered);
+    }
+  }, [user]);
 
   // Modals state
   const [isCashierOpen, setIsCashierOpen] = useState(false);
@@ -53,17 +77,24 @@ export default function CasinoHome() {
     setServerSeedHash(Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2));
   };
 
+  const activeWallet = user?.wallet || (solanaConnected ? solanaPublicKey : evmAddress) || '';
+
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col justify-between">
-      {/* Top Multi-chain Navbar */}
+      {/* Top Multi-chain Navbar with Real Web3 Integration */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        userWallet={userWallet}
-        setUserWallet={setUserWallet}
-        balance={balance}
-        vipTier={vipTier}
-        accumulatedRakeback={accumulatedRakeback}
+        user={user}
+        isAuthenticated={isAuthenticated}
+        isAuthenticating={isAuthenticating}
+        solanaConnected={solanaConnected}
+        solanaPublicKey={solanaPublicKey}
+        evmConnected={evmConnected}
+        evmAddress={evmAddress}
+        onSignInSolana={signInSolana}
+        onSignInEVM={signInEVM}
+        onSignOut={signOut}
         onOpenCashier={() => setIsCashierOpen(true)}
         onOpenVIP={() => setIsVIPOpen(true)}
         onOpenSecurity={() => setIsSecurityOpen(true)}
@@ -75,7 +106,7 @@ export default function CasinoHome() {
       <div className="max-w-7xl mx-auto px-4 pt-6 pb-2 w-full text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400 mb-3">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span>Server-Authoritative Web3 Engine • Tor v3 Anonymous Access</span>
+          <span>Multi-Chain Cryptographic Sessions • SIWE & SIWS Verified</span>
         </div>
         <h1 className="text-3xl md:text-5xl font-heading font-black tracking-tight text-foreground uppercase">
           Autonomous <span className="text-primary">Provably Fair</span> Gaming
@@ -86,7 +117,7 @@ export default function CasinoHome() {
       <div className="max-w-7xl mx-auto px-4 py-4 w-full flex-1 flex items-center justify-center">
         {activeTab === 'DICE' && (
           <DiceGame
-            userWallet={userWallet}
+            userWallet={activeWallet}
             balance={balance}
             setBalance={setBalance}
             onBetPlaced={handleBetPlaced}
@@ -94,7 +125,7 @@ export default function CasinoHome() {
         )}
         {activeTab === 'CRASH' && (
           <CrashGame
-            userWallet={userWallet}
+            userWallet={activeWallet}
             balance={balance}
             setBalance={setBalance}
             onBetPlaced={handleBetPlaced}
@@ -103,7 +134,7 @@ export default function CasinoHome() {
         {activeTab === 'VAULT' && <BankrollVault />}
       </div>
 
-      {/* Interactive FAQ Section (Rollbit Style) */}
+      {/* Interactive FAQ Section */}
       <FAQSection />
 
       {/* Live Global Activity Ticker */}
@@ -137,7 +168,7 @@ export default function CasinoHome() {
       <CashierModal
         isOpen={isCashierOpen}
         onClose={() => setIsCashierOpen(false)}
-        userWallet={userWallet}
+        userWallet={activeWallet}
         balance={balance}
         onDepositSuccess={handleDeposit}
         onWithdrawSuccess={handleWithdraw}
@@ -164,7 +195,7 @@ export default function CasinoHome() {
       <Trollbox
         isOpen={isTrollboxOpen}
         onClose={() => setIsTrollboxOpen(false)}
-        userWallet={userWallet}
+        userWallet={activeWallet}
         userVip={vipTier}
       />
     </main>

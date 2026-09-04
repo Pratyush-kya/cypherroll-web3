@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getOrCreatePlayer, recordAtomicBet } from '@/lib/supabase';
 import { calculateDiceRoll, getDiceMultiplier } from '@/lib/provably-fair';
+import { verifySession } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { walletAddress, target, wager, clientSeed } = body;
 
-    if (!walletAddress || !target || !wager) {
+    if (!target || !wager) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
@@ -15,8 +18,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid bet parameters' }, { status: 400 });
     }
 
+    // Security Check: Verify Cryptographic Session Cookie
+    const cookieHeader = req.headers.get('cookie') || '';
+    const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/);
+    const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
+
+    // Use verified wallet from cryptographically signed session, or fallback to provided address for guest play
+    const effectiveWallet = session?.wallet || walletAddress || 'Anon_Guest';
+
+    // If caller specified a wallet that differs from session cookie, reject spoofing attempt
+    if (session?.wallet && walletAddress && session.wallet !== walletAddress) {
+      return NextResponse.json({ error: 'Session wallet mismatch: spoofing attempt rejected' }, { status: 403 });
+    }
+
     // 1. Fetch server state for this player
-    const profile = await getOrCreatePlayer(walletAddress);
+    const profile = await getOrCreatePlayer(effectiveWallet);
 
     if (profile.balance_usdc < wager) {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
@@ -42,7 +58,7 @@ export async function POST(req: Request) {
 
     // 4. Atomic Database Transaction
     const updatedState = await recordAtomicBet({
-      wallet: walletAddress,
+      wallet: effectiveWallet,
       gameType: 'DICE',
       wager,
       won,
