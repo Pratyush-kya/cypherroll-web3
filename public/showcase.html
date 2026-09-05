@@ -24,7 +24,7 @@
       height: 100%;
       overflow: hidden;
       background-color: var(--bg);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: var(--text);
     }
     #webgl-canvas {
@@ -45,60 +45,98 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 24px;
+      padding: 20px;
     }
     .header {
       pointer-events: auto;
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      background: rgba(13, 18, 30, 0.75);
+      gap: 16px;
+      background: rgba(13, 18, 30, 0.85);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border);
-      padding: 14px 24px;
+      padding: 14px 20px;
       border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     }
     .title-group h1 {
       font-size: 1.15rem;
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      background: linear-gradient(135deg, #f59e0b, #ec4899, #8b5cf6);
+      background: linear-gradient(135deg, var(--primary), var(--cyan), var(--violet));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .title-group p {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: #94a3b8;
       font-family: monospace;
     }
-    .model-selector {
+    .controls-group {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .control-label {
+      font-size: 0.7rem;
+      font-family: monospace;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      background: rgba(2, 6, 23, 0.6);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .btn {
-      background: rgba(30, 41, 59, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: #cbd5e1;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 0.8rem;
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
     }
     .btn:hover {
-      background: rgba(245, 158, 11, 0.15);
-      border-color: var(--primary);
       color: #fff;
+      background: rgba(255, 255, 255, 0.05);
     }
     .btn.active {
-      background: var(--primary);
+      background: rgba(245, 158, 11, 0.2);
       border-color: var(--primary);
-      color: #000;
-      box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+      color: var(--primary);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+    }
+    .theme-btn.active[data-theme="imperial"] {
+      background: rgba(245, 158, 11, 0.25);
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+    .theme-btn.active[data-theme="synthwave"] {
+      background: rgba(236, 72, 153, 0.25);
+      border-color: #ec4899;
+      color: #ec4899;
+    }
+    .theme-btn.active[data-theme="emerald"] {
+      background: rgba(16, 185, 129, 0.25);
+      border-color: #10b981;
+      color: #10b981;
+    }
+    .theme-btn.active[data-theme="crimson"] {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: #ef4444;
+      color: #ef4444;
     }
     /* Loading Spinner */
     #loader {
@@ -111,15 +149,15 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
-      transition: opacity 0.5s ease, visibility 0.5s ease;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
     }
     #loader.hidden {
       opacity: 0;
       visibility: hidden;
     }
     .spinner {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border: 3px solid rgba(245, 158, 11, 0.15);
       border-top-color: var(--primary);
       border-radius: 50%;
@@ -129,7 +167,7 @@
       to { transform: rotate(360deg); }
     }
     .progress-bar-container {
-      width: 200px;
+      width: 220px;
       height: 4px;
       background: #1e293b;
       border-radius: 2px;
@@ -146,25 +184,24 @@
       font-size: 0.8rem;
       color: #94a3b8;
     }
-    /* Controls Help */
     .footer {
       pointer-events: auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-family: monospace;
       color: #64748b;
     }
     .badge {
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.85);
       border: 1px solid var(--border);
       padding: 6px 12px;
       border-radius: 6px;
+      backdrop-filter: blur(8px);
     }
   </style>
 
-  <!-- Import Maps for Modern Three.js ES Modules -->
   <script type="importmap">
     {
       "imports": {
@@ -175,45 +212,58 @@
   </script>
 </head>
 <body>
-  <!-- Three.js Canvas Container -->
   <canvas id="webgl-canvas"></canvas>
 
-  <!-- Preloader -->
   <div id="loader">
     <div class="spinner"></div>
     <div class="progress-bar-container">
       <div id="progress-bar"></div>
     </div>
-    <div id="status-text" class="status-text">INITIALIZING GRAPHICS PIPELINE...</div>
+    <div id="status-text" class="status-text">INITIALIZING ENGINE...</div>
   </div>
 
-  <!-- UI Overlay -->
   <div class="ui-layer">
     <div class="header">
       <div class="title-group">
-        <h1>CypherRoll 3D Production Studio</h1>
-        <p>PBR Tone-Mapped • Color-Managed • Cinematic Bloom</p>
+        <h1>CypherRoll 3D Studio</h1>
+        <p>Imperial Cyberpunk • Real-Time PBR Color Management</p>
       </div>
-      <div class="model-selector">
-        <button class="btn active" data-model="/assets/3d/dice.glb">Dice</button>
-        <button class="btn" data-model="/assets/3d/rocket.glb">Rocket</button>
-        <button class="btn" data-model="/assets/3d/chip.glb">VIP Chip</button>
+
+      <div class="controls-group">
+        <!-- Model Selector -->
+        <div>
+          <span class="control-label">Model:</span>
+          <div class="btn-group">
+            <button class="btn model-btn active" data-model="/assets/3d/dice.glb">Dice</button>
+            <button class="btn model-btn" data-model="/assets/3d/rocket.glb">Rocket</button>
+            <button class="btn model-btn" data-model="/assets/3d/chip.glb">VIP Chip</button>
+          </div>
+        </div>
+
+        <!-- Live Theme Switcher -->
+        <div>
+          <span class="control-label">Palette:</span>
+          <div class="btn-group">
+            <button class="btn theme-btn active" data-theme="imperial">Imperial Gold</button>
+            <button class="btn theme-btn" data-theme="synthwave">Synthwave</button>
+            <button class="btn theme-btn" data-theme="emerald">Emerald VIP</button>
+            <button class="btn theme-btn" data-theme="crimson">Crimson</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="footer">
       <div class="badge">Drag to Orbit • Scroll to Zoom • Right-Click to Pan</div>
-      <div class="badge" id="gpu-info">ACESFilmic • sRGB • 60 FPS</div>
+      <div class="badge" id="theme-indicator">Theme: Imperial Cyberpunk • ACESFilmic • DPR 2.0</div>
     </div>
   </div>
 
-  <!-- Main Three.js Application Logic -->
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -222,12 +272,66 @@
     import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 
+    // Curated Color Presets
+    const PALETTES = {
+      imperial: {
+        name: 'Imperial Cyberpunk',
+        hull: 0x070a12,
+        accent: 0xffb800,
+        emissiveA: 0xffb800, // Gold glow
+        emissiveB: 0x00f0ff, // Cyan glow
+        emissiveC: 0x8b5cf6, // Violet glow
+        plasma: 0xff4500,    // Solar thruster
+        lightKey: 0xfff5ea,
+        lightRim: 0x00f0ff,
+        lightFill: 0x8b5cf6,
+      },
+      synthwave: {
+        name: 'Neon Synthwave',
+        hull: 0x080c1d,
+        accent: 0xec4899,
+        emissiveA: 0xec4899, // Hot pink glow
+        emissiveB: 0x06b6d4, // Cyan glow
+        emissiveC: 0x3b82f6, // Blue glow
+        plasma: 0xf43f5e,
+        lightKey: 0xfce7f3,
+        lightRim: 0x06b6d4,
+        lightFill: 0xec4899,
+      },
+      emerald: {
+        name: 'Emerald High-Roller',
+        hull: 0x050d0a,
+        accent: 0x10b981,
+        emissiveA: 0x10b981, // Emerald glow
+        emissiveB: 0xf59e0b, // Amber glow
+        emissiveC: 0x065f46, // Jade
+        plasma: 0x10b981,
+        lightKey: 0xfef3c7,
+        lightRim: 0x10b981,
+        lightFill: 0x047857,
+      },
+      crimson: {
+        name: 'Crimson Overdrive',
+        hull: 0x100808,
+        accent: 0xef4444,
+        emissiveA: 0xef4444, // Blood ruby glow
+        emissiveB: 0xf97316, // Solar orange glow
+        emissiveC: 0x7f1d1d, // Dark crimson
+        plasma: 0xff2200,
+        lightKey: 0xffedd5,
+        lightRim: 0xef4444,
+        lightFill: 0xf97316,
+      }
+    };
+
     class ProductionViewer {
       constructor(canvas) {
         this.canvas = canvas;
         this.currentModelGroup = new THREE.Group();
         this.modelCache = new Map();
         this.clock = new THREE.Clock();
+        this.currentTheme = 'imperial';
+        this.activeModelUrl = '/assets/3d/dice.glb';
 
         this.initRenderer();
         this.initScene();
@@ -238,34 +342,26 @@
         this.initLoaders();
         this.initEventListeners();
 
-        // Load initial asset
-        this.loadModel('/assets/3d/dice.glb');
+        this.loadModel(this.activeModelUrl);
 
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
       }
 
-      /* =========================================================================
-         1. RENDERER INITIALIZATION (Color Space & Tone Mapping Hardening)
-         ========================================================================= */
       initRenderer() {
         this.renderer = new THREE.WebGLRenderer({
           canvas: this.canvas,
-          antialias: false, // Managed by FXAA in composer to save GPU cycles
+          antialias: false,
           alpha: true,
           powerPreference: 'high-performance',
           stencil: false,
           depth: true,
         });
 
-        // Loophole 1 Fix: Explicit sRGB color space output
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-        // Loophole 2 Fix: ACESFilmic dynamic range tone mapping to prevent blowout
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.1;
 
-        // Performance: Cap device pixel ratio at 2.0 to prevent 4K mobile thermal throttling
         const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
         this.renderer.setPixelRatio(pixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -279,22 +375,20 @@
         this.scene.background = new THREE.Color(0x07090e);
         this.scene.add(this.currentModelGroup);
 
-        // Studio lighting accents (Key, Rim, Fill)
-        const keyLight = new THREE.DirectionalLight(0xfff3d6, 2.5);
-        keyLight.position.set(5, 8, 5);
-        keyLight.castShadow = true;
-        keyLight.shadow.mapSize.width = 1024;
-        keyLight.shadow.mapSize.height = 1024;
-        keyLight.shadow.bias = -0.0001;
-        this.scene.add(keyLight);
+        this.keyLight = new THREE.DirectionalLight(0xfff5ea, 2.8);
+        this.keyLight.position.set(5, 8, 5);
+        this.keyLight.castShadow = true;
+        this.keyLight.shadow.mapSize.set(1024, 1024);
+        this.keyLight.shadow.bias = -0.0001;
+        this.scene.add(this.keyLight);
 
-        const rimLight = new THREE.DirectionalLight(0x06b6d4, 3.0);
-        rimLight.position.set(-6, -2, -4);
-        this.scene.add(rimLight);
+        this.rimLight = new THREE.DirectionalLight(0x00f0ff, 3.2);
+        this.rimLight.position.set(-6, -2, -4);
+        this.scene.add(this.rimLight);
 
-        const fillLight = new THREE.PointLight(0xa855f7, 4.0, 15);
+        this.fillLight = new THREE.PointLight(0x8b5cf6, 4.0, 15);
         fillLight.position.set(0, -3, 3);
-        this.scene.add(fillLight);
+        this.scene.add(this.fillLight);
       }
 
       initCamera() {
@@ -311,42 +405,26 @@
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        this.controls.minDistance = 1.5;
-        this.controls.maxDistance = 12.0;
+        this.controls.minDistance = 1.2;
+        this.controls.maxDistance = 10.0;
         this.controls.maxPolarAngle = Math.PI / 2 + 0.1;
         this.controls.target.set(0, 0, 0);
       }
 
-      /* =========================================================================
-         2. ENVIRONMENT & PBR RADIANCE (Realistic Metal/Roughness Reflections)
-         ========================================================================= */
       initEnvironment() {
         const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
         pmremGenerator.compileEquirectangularShader();
 
-        // High-fidelity fallback PBR environment via PMREM RoomEnvironment
         const roomEnv = new RoomEnvironment();
         this.scene.environment = pmremGenerator.fromScene(roomEnv, 0.04).texture;
         roomEnv.dispose();
-
-        // Support for custom .hdr environments:
-        const rgbeLoader = new RGBELoader();
-        rgbeLoader.setDataType(THREE.FloatType);
-        // rgbeLoader.load('/assets/env/studio.hdr', (texture) => {
-        //   texture.mapping = THREE.EquirectangularReflectionMapping;
-        //   this.scene.environment = texture;
-        // });
       }
 
-      /* =========================================================================
-         3. CINEMATIC POST-PROCESSING PIPELINE (Bloom, Color Grade & FXAA)
-         ========================================================================= */
       initPostProcessing() {
         const width = window.innerWidth;
         const height = window.innerHeight;
         const pr = this.renderer.getPixelRatio();
 
-        // WebGLRenderTarget with FloatType for HDR Bloom buffering
         const renderTarget = new THREE.WebGLRenderTarget(width * pr, height * pr, {
           type: THREE.HalfFloatType,
           format: THREE.RGBAFormat,
@@ -354,33 +432,26 @@
 
         this.composer = new EffectComposer(this.renderer, renderTarget);
 
-        // Pass 1: Scene Render
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
 
-        // Pass 2: Calibrated UnrealBloom (tight, cinematic threshold)
         this.bloomPass = new UnrealBloomPass(
           new THREE.Vector2(width, height),
-          0.38,  // Strength
-          0.45,  // Radius
-          0.82   // Threshold
+          0.38,
+          0.45,
+          0.82
         );
         this.composer.addPass(this.bloomPass);
 
-        // Pass 3: OutputPass for correct color space transform
         const outputPass = new OutputPass();
         this.composer.addPass(outputPass);
 
-        // Pass 4: FXAA Anti-Aliasing (Smoothing pixel edges post-bloom)
         this.fxaaPass = new ShaderPass(FXAAShader);
         this.fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pr);
         this.fxaaPass.material.uniforms['resolution'].value.y = 1 / (height * pr);
         this.composer.addPass(this.fxaaPass);
       }
 
-      /* =========================================================================
-         4. GLTF LOADER & MATERIAL COLOR-SPACE NORMALIZATION
-         ========================================================================= */
       initLoaders() {
         this.dracoLoader = new DRACOLoader();
         this.dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
@@ -390,6 +461,7 @@
       }
 
       loadModel(url) {
+        this.activeModelUrl = url;
         const progressBar = document.getElementById('progress-bar');
         const loaderEl = document.getElementById('loader');
         const statusText = document.getElementById('status-text');
@@ -399,6 +471,7 @@
 
         if (this.modelCache.has(url)) {
           this.displayModel(this.modelCache.get(url).clone());
+          this.applyTheme(this.currentTheme);
           loaderEl.classList.add('hidden');
           return;
         }
@@ -406,7 +479,6 @@
         this.gltfLoader.load(
           url,
           (gltf) => {
-            // LOOPHOLE 1 FIX: Traverse and enforce exact Color Space rules on all textures
             gltf.scene.traverse((node) => {
               if (node.isMesh) {
                 node.castShadow = true;
@@ -415,19 +487,12 @@
                 const materials = Array.isArray(node.material) ? node.material : [node.material];
                 materials.forEach((mat) => {
                   if (!mat) return;
-
-                  // 1. Base Color / Diffuse Map MUST be SRGB
                   if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
-
-                  // 2. Emissive Map MUST be SRGB
                   if (mat.emissiveMap) mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
-
-                  // 3. Data Maps (Normal, Roughness, Metalness, AO) MUST be LinearSRGB
                   if (mat.normalMap) mat.normalMap.colorSpace = THREE.LinearSRGBColorSpace;
                   if (mat.roughnessMap) mat.roughnessMap.colorSpace = THREE.LinearSRGBColorSpace;
                   if (mat.metalnessMap) mat.metalnessMap.colorSpace = THREE.LinearSRGBColorSpace;
                   if (mat.aoMap) mat.aoMap.colorSpace = THREE.LinearSRGBColorSpace;
-
                   mat.needsUpdate = true;
                 });
               }
@@ -435,11 +500,12 @@
 
             this.modelCache.set(url, gltf.scene);
             this.displayModel(gltf.scene.clone());
+            this.applyTheme(this.currentTheme);
 
             progressBar.style.width = '100%';
             setTimeout(() => {
               loaderEl.classList.add('hidden');
-            }, 300);
+            }, 250);
           },
           (xhr) => {
             if (xhr.total > 0) {
@@ -449,8 +515,8 @@
             }
           },
           (error) => {
-            console.error('Critical 3D Load Error:', error);
-            statusText.textContent = 'ERROR LOADING ASSET. CHECKING TOR/NETWORK FALLBACK...';
+            console.error('Load error:', error);
+            statusText.textContent = 'ASSET LOAD FAILED.';
           }
         );
       }
@@ -476,9 +542,63 @@
         this.currentModelGroup.add(model);
       }
 
-      /* =========================================================================
-         5. RESIZING & RENDER LOOP
-         ========================================================================= */
+      /* -------------------------------------------------------------
+         DYNAMIC REAL-TIME PALETTE SWITCHER (No reload required)
+         ------------------------------------------------------------- */
+      applyTheme(themeKey) {
+        const theme = PALETTES[themeKey] || PALETTES.imperial;
+        this.currentTheme = themeKey;
+
+        // Update lights
+        if (this.keyLight) this.keyLight.color.setHex(theme.lightKey);
+        if (this.rimLight) this.rimLight.color.setHex(theme.lightRim);
+        if (this.fillLight) this.fillLight.color.setHex(theme.lightFill);
+
+        // Update Mesh Materials
+        this.currentModelGroup.traverse((child) => {
+          if (child.isMesh && child.material) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((mat) => {
+              const name = (mat.name || '').toLowerCase();
+              const childName = (child.name || '').toLowerCase();
+
+              // Hull / Body (Obsidian, Titanium, Carbon)
+              if (name.includes('obsidian') || name.includes('hull') || name.includes('titanium') || childName.includes('fuselage')) {
+                mat.color.setHex(theme.hull);
+              }
+              // Golden Accents / Pip dots
+              else if (name.includes('gold') || name.includes('pip') || childName.includes('pip') || childName.includes('medallion')) {
+                mat.color.setHex(theme.accent);
+                if (mat.emissive) mat.emissive.setHex(theme.emissiveA);
+              }
+              // Cyan Circuits / Visor
+              else if (name.includes('cyan') || name.includes('cockpit') || name.includes('visor') || name.includes('crest') || childName.includes('visor')) {
+                mat.color.setHex(theme.emissiveB);
+                if (mat.emissive) mat.emissive.setHex(theme.emissiveB);
+              }
+              // Violet Trim / Nose cone / Grooves
+              else if (name.includes('violet') || name.includes('nose') || name.includes('groove') || childName.includes('nose')) {
+                mat.color.setHex(theme.emissiveC);
+                if (mat.emissive) mat.emissive.setHex(theme.emissiveC);
+              }
+              // Rocket Thruster Flame
+              else if (name.includes('flame') || name.includes('plasma') || childName.includes('flame')) {
+                mat.color.setHex(theme.plasma);
+                if (mat.emissive) mat.emissive.setHex(theme.plasma);
+              }
+
+              mat.needsUpdate = true;
+            });
+          }
+        });
+
+        // Update UI Indicator
+        const ind = document.getElementById('theme-indicator');
+        if (ind) {
+          ind.textContent = `Theme: ${theme.name} • ACESFilmic • DPR 2.0`;
+        }
+      }
+
       initEventListeners() {
         window.addEventListener('resize', () => {
           const w = window.innerWidth;
@@ -498,13 +618,22 @@
           }
         });
 
-        // Model switcher buttons
-        document.querySelectorAll('.btn[data-model]').forEach((btn) => {
-          btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.btn').forEach((b) => b.classList.remove('active'));
+        // Model Switcher
+        document.querySelectorAll('.model-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.model-btn').forEach((b) => b.classList.remove('active'));
             btn.classList.add('active');
-            const modelUrl = btn.getAttribute('data-model');
-            this.loadModel(modelUrl);
+            this.loadModel(btn.getAttribute('data-model'));
+          });
+        });
+
+        // Theme Switcher
+        document.querySelectorAll('.theme-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.theme-btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            const theme = btn.getAttribute('data-theme');
+            this.applyTheme(theme);
           });
         });
       }
@@ -522,7 +651,6 @@
       }
     }
 
-    // Mount on DOM Ready
     window.addEventListener('DOMContentLoaded', () => {
       const canvas = document.getElementById('webgl-canvas');
       window.viewer = new ProductionViewer(canvas);
