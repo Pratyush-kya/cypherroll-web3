@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 interface DiceCanvasProps {
   isRolling: boolean;
@@ -10,9 +11,13 @@ interface DiceCanvasProps {
   lastWon?: boolean | null;
 }
 
+// Global cache for GLTF model to avoid re-fetching
+let cachedDiceGltf: THREE.Group | null = null;
+
 export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }: DiceCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [hasWebGL, setHasWebGL] = useState(true);
+  const [modelSource, setModelSource] = useState<'blender' | 'procedural'>('procedural');
 
   useEffect(() => {
     const currentMount = mountRef.current;
@@ -35,62 +40,67 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      camera.position.set(0, 2.2, 5.0);
+      camera.position.set(0, 2.0, 4.8);
       camera.lookAt(0, 0, 0);
 
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: 'high-performance',
+      });
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       currentMount.appendChild(renderer.domElement);
 
-      // Studio Cyberpunk Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+      // Studio Cyberpunk Lighting (Key: Gold Amber, Rim: Cyan, Fill: Violet)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
       scene.add(ambientLight);
 
-      const goldLight = new THREE.PointLight(0xf59e0b, 6, 15);
-      goldLight.position.set(3, 4, 3);
+      const goldLight = new THREE.PointLight(0xf59e0b, 7, 16);
+      goldLight.position.set(3.5, 4.0, 3.5);
       scene.add(goldLight);
 
-      const purpleLight = new THREE.PointLight(0xa855f7, 7, 15);
-      purpleLight.position.set(-3, -2, -3);
+      const purpleLight = new THREE.PointLight(0xa855f7, 8, 16);
+      purpleLight.position.set(-3.5, -2.5, -3.0);
       scene.add(purpleLight);
 
-      const statusLight = new THREE.PointLight(0x06b6d4, 5, 12);
-      statusLight.position.set(0, 3, -2);
+      const statusLight = new THREE.PointLight(0x06b6d4, 6, 14);
+      statusLight.position.set(0, 3.2, -2.2);
       scene.add(statusLight);
 
       // Master Dice Group
       const diceGroup = new THREE.Group();
       scene.add(diceGroup);
 
-      // 1. Obsidian Metallic Body (Beveled Cube Appearance)
+      // Procedural Fallback Mesh Group
+      const proceduralGroup = new THREE.Group();
+      diceGroup.add(proceduralGroup);
+
       const size = 1.8;
       const bodyGeo = new THREE.BoxGeometry(size, size, size, 4, 4, 4);
       const bodyMat = new THREE.MeshStandardMaterial({
         color: 0x0a0f1d,
-        metalness: 0.92,
-        roughness: 0.18,
+        metalness: 0.95,
+        roughness: 0.15,
       });
       const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-      diceGroup.add(bodyMesh);
+      proceduralGroup.add(bodyMesh);
 
-      // 2. Glowing Neon Circuit Edges
       const edgesGeo = new THREE.EdgesGeometry(bodyGeo, 15);
       const edgeMat = new THREE.LineBasicMaterial({
         color: 0x00f0ff,
         linewidth: 2,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.85,
       });
       const wireframe = new THREE.LineSegments(edgesGeo, edgeMat);
-      diceGroup.add(wireframe);
+      proceduralGroup.add(wireframe);
 
-      // 3. Glowing Golden Pips (Embedded 3D Spheres on all 6 faces)
       const pipGeo = new THREE.SphereGeometry(0.12, 16, 16);
       const pipMat = new THREE.MeshStandardMaterial({
         color: 0xfbbf24,
         emissive: 0xf59e0b,
-        emissiveIntensity: 0.8,
+        emissiveIntensity: 0.9,
         metalness: 0.85,
         roughness: 0.1,
       });
@@ -98,73 +108,99 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       const half = size / 2 + 0.02;
       const offset = 0.42;
 
-      // Face 1: Front (+Z) -> 1 pip
+      // Face 1: Front (+Z)
       const p1 = new THREE.Mesh(pipGeo, pipMat);
       p1.position.set(0, 0, half);
-      diceGroup.add(p1);
+      proceduralGroup.add(p1);
 
-      // Face 6: Back (-Z) -> 6 pips
+      // Face 6: Back (-Z)
       [-offset, offset].forEach((x) => {
         [-offset, 0, offset].forEach((y) => {
           const p = new THREE.Mesh(pipGeo, pipMat);
           p.position.set(x, y, -half);
-          diceGroup.add(p);
+          proceduralGroup.add(p);
         });
       });
 
-      // Face 2: Top (+Y) -> 2 pips
+      // Face 2: Top (+Y)
       const p2a = new THREE.Mesh(pipGeo, pipMat);
       p2a.position.set(-offset, half, -offset);
       const p2b = new THREE.Mesh(pipGeo, pipMat);
       p2b.position.set(offset, half, offset);
-      diceGroup.add(p2a, p2b);
+      proceduralGroup.add(p2a, p2b);
 
-      // Face 5: Bottom (-Y) -> 5 pips
+      // Face 5: Bottom (-Y)
       [[-offset, -offset], [offset, -offset], [0, 0], [-offset, offset], [offset, offset]].forEach(([x, z]) => {
         const p = new THREE.Mesh(pipGeo, pipMat);
         p.position.set(x, -half, z);
-        diceGroup.add(p);
+        proceduralGroup.add(p);
       });
 
-      // Face 3: Right (+X) -> 3 pips
+      // Face 3: Right (+X)
       [[-offset, -offset], [0, 0], [offset, offset]].forEach(([y, z]) => {
         const p = new THREE.Mesh(pipGeo, pipMat);
         p.position.set(half, y, z);
-        diceGroup.add(p);
+        proceduralGroup.add(p);
       });
 
-      // Face 4: Left (-X) -> 4 pips
+      // Face 4: Left (-X)
       [[-offset, -offset], [offset, -offset], [-offset, offset], [offset, offset]].forEach(([y, z]) => {
         const p = new THREE.Mesh(pipGeo, pipMat);
         p.position.set(-half, y, z);
-        diceGroup.add(p);
+        proceduralGroup.add(p);
       });
 
-      // Initial Angled Isometric Presentation
+      // Load Master Blender GLB Model Asynchronously
+      const attachBlenderModel = (clonedScene: THREE.Group) => {
+        clonedScene.scale.set(0.95, 0.95, 0.95);
+        clonedScene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const m = child as THREE.Mesh;
+            m.castShadow = true;
+            m.receiveShadow = true;
+          }
+        });
+        diceGroup.remove(proceduralGroup);
+        diceGroup.add(clonedScene);
+        setModelSource('blender');
+      };
+
+      if (cachedDiceGltf) {
+        attachBlenderModel(cachedDiceGltf.clone());
+      } else {
+        const loader = new GLTFLoader();
+        loader.load(
+          '/assets/3d/dice.glb',
+          (gltf) => {
+            cachedDiceGltf = gltf.scene;
+            attachBlenderModel(gltf.scene.clone());
+          },
+          undefined,
+          (err) => {
+            console.warn('GLB dice asset fallback to high-precision procedural engine:', err);
+          }
+        );
+      }
+
+      // Initial Presentation Angle
       diceGroup.rotation.x = 0.45;
       diceGroup.rotation.y = 0.65;
       diceGroup.rotation.z = 0.15;
-
-      let velX = 0.006;
-      let velY = 0.009;
-      let velZ = 0.004;
 
       const animate = () => {
         animationId = requestAnimationFrame(animate);
 
         if (isRolling) {
-          diceGroup.rotation.x += 0.24;
-          diceGroup.rotation.y += 0.29;
-          diceGroup.rotation.z += 0.19;
+          diceGroup.rotation.x += 0.25;
+          diceGroup.rotation.y += 0.31;
+          diceGroup.rotation.z += 0.21;
           edgeMat.color.setHex(0xf59e0b);
           statusLight.color.setHex(0xf59e0b);
         } else {
-          // Smooth floating idle rotation
-          diceGroup.rotation.x += velX;
-          diceGroup.rotation.y += velY;
-          diceGroup.rotation.z += velZ;
+          diceGroup.rotation.x += 0.006;
+          diceGroup.rotation.y += 0.009;
+          diceGroup.rotation.z += 0.004;
 
-          // Reactive glow on win/loss outcome
           if (lastWon === true) {
             edgeMat.color.setHex(0x10b981);
             statusLight.color.setHex(0x10b981);
@@ -214,26 +250,54 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
     };
   }, [isRolling, lastWon]);
 
+  // Tor Safe High-Fidelity Holographic 2D HUD Fallback
   if (!hasWebGL) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-900/90 rounded-2xl border border-slate-800 p-6 text-center min-h-[240px]">
-        <div className="text-5xl mb-3 animate-bounce">🎲</div>
-        <div className="text-primary font-mono text-xl font-bold tracking-wider mb-1">
-          {isRolling ? "Rolling..." : `Target: ${targetRoll ?? 50.00}`}
+      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-950/90 rounded-2xl border border-amber-500/20 p-6 text-center min-h-[260px] relative overflow-hidden">
+        {/* Holographic scanning line */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(245,158,11,0.05)_50%,transparent_100%)] animate-pulse pointer-events-none" />
+
+        {/* 2D Cyberpunk Dice HUD */}
+        <div className={`relative w-28 h-28 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center mb-4 ${
+          isRolling
+            ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_30px_rgba(245,158,11,0.4)] rotate-45'
+            : lastWon === true
+            ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.4)]'
+            : lastWon === false
+            ? 'border-rose-500 bg-rose-500/10 shadow-[0_0_30px_rgba(239,68,68,0.4)]'
+            : 'border-cyan-500/40 bg-slate-900 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
+        }`}>
+          <div className="text-4xl font-mono font-black text-white">
+            {isRolling ? '...' : typeof lastRoll === 'number' ? lastRoll.toFixed(2) : (targetRoll ?? 50.0).toFixed(0)}
+          </div>
+          {/* Corner neon accents */}
+          <span className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-amber-400 rounded-sm" />
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-sm" />
+          <span className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-purple-400 rounded-sm" />
+          <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-sm" />
         </div>
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-          Tor Safe 2D Fallback Active
+
+        <div className="text-primary font-mono text-lg font-bold tracking-wider mb-1">
+          {isRolling ? 'CRYPTOGRAPHIC ROLL IN PROGRESS...' : `TARGET: ${targetRoll ?? 50.0}`}
+        </div>
+        <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest bg-slate-900 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          Tor Stealth Mode Active (Privacy Compliant)
         </span>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full min-h-[240px]">
+    <div className="relative w-full h-full min-h-[260px]">
       <div ref={mountRef} className="w-full h-full" />
-      <div className="absolute bottom-2 right-3 text-[10px] font-mono text-primary uppercase tracking-wider bg-slate-900/90 px-2 py-0.5 rounded border border-amber-500/40 flex items-center gap-1.5 shadow-lg">
+      <div className="absolute bottom-2 right-3 text-[10px] font-mono text-primary uppercase tracking-wider bg-slate-900/90 px-2.5 py-1 rounded border border-amber-500/40 flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
-        <span>CypherDice 3D Engine (Zero-Latency)</span>
+        <span>
+          {modelSource === 'blender'
+            ? 'CypherDice 3D (Blender Master Asset)'
+            : 'CypherDice 3D Engine (Zero-Latency)'}
+        </span>
       </div>
     </div>
   );

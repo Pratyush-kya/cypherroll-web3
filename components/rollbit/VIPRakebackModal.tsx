@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Award, Crown, X, Sparkles, CheckCircle2, TrendingUp, Gift } from 'lucide-react';
+import CasinoChipCanvas from '@/components/3d/CasinoChipCanvas';
 
 interface VIPRakebackModalProps {
   isOpen: boolean;
@@ -75,11 +76,14 @@ export default function VIPRakebackModal({
             </span>
           </div>
 
-          <div className="text-right">
-            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block">Rakeback Rate</span>
-            <span className="text-xl font-heading font-black text-purple-400">
-              {TIERS[currentTierIndex]?.rakebackPct || '15%'}
-            </span>
+          <div className="flex items-center gap-4">
+            <CasinoChipCanvas className="w-16 h-16 shrink-0 hidden sm:block" />
+            <div className="text-right">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block">Rakeback Rate</span>
+              <span className="text-xl font-heading font-black text-purple-400">
+                {TIERS[currentTierIndex]?.rakebackPct || '15%'}
+              </span>
+            </div>
           </div>
         </div>
 

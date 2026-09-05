@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 interface CrashRocketCanvasProps {
   multiplier: number;
@@ -9,9 +10,12 @@ interface CrashRocketCanvasProps {
   gameState: 'IDLE' | 'STARTING' | 'FLYING' | 'CRASHED';
 }
 
+let cachedRocketGltf: THREE.Group | null = null;
+
 export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: CrashRocketCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [hasWebGL, setHasWebGL] = useState(true);
+  const [modelSource, setModelSource] = useState<'blender' | 'procedural'>('procedural');
 
   useEffect(() => {
     const currentMount = mountRef.current;
@@ -34,27 +38,31 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      camera.position.set(0, 1.4, 5.8);
-      camera.lookAt(0, 0.2, 0);
+      camera.position.set(0, 1.2, 5.5);
+      camera.lookAt(0, 0.1, 0);
 
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: 'high-performance',
+      });
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       currentMount.appendChild(renderer.domElement);
 
-      // Studio Cyberpunk Lighting
+      // Studio Cyberpunk Lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
       scene.add(ambientLight);
 
-      const purpleLight = new THREE.PointLight(0xa855f7, 7, 16);
-      purpleLight.position.set(2, 3, 3);
+      const purpleLight = new THREE.PointLight(0xa855f7, 8, 16);
+      purpleLight.position.set(2.5, 3.2, 3.0);
       scene.add(purpleLight);
 
-      const cyanLight = new THREE.PointLight(0x06b6d4, 5, 14);
-      cyanLight.position.set(-3, -1, 2);
+      const cyanLight = new THREE.PointLight(0x06b6d4, 6, 14);
+      cyanLight.position.set(-3.0, -1.0, 2.5);
       scene.add(cyanLight);
 
-      const thrusterLight = new THREE.PointLight(0xf59e0b, 8, 12);
+      const thrusterLight = new THREE.PointLight(0xf59e0b, 9, 12);
       thrusterLight.position.set(-1.6, -1.0, 0);
       scene.add(thrusterLight);
 
@@ -62,7 +70,10 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
       const rocketGroup = new THREE.Group();
       scene.add(rocketGroup);
 
-      // 1. Titanium Hull Fuselage
+      // Procedural Fallback Hull
+      const proceduralGroup = new THREE.Group();
+      rocketGroup.add(proceduralGroup);
+
       const hullGeo = new THREE.CylinderGeometry(0.38, 0.44, 2.2, 24);
       const hullMat = new THREE.MeshStandardMaterial({
         color: 0x0f172a,
@@ -71,9 +82,8 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
       });
       const hullMesh = new THREE.Mesh(hullGeo, hullMat);
       hullMesh.rotation.z = -Math.PI / 4;
-      rocketGroup.add(hullMesh);
+      proceduralGroup.add(hullMesh);
 
-      // 2. Aerodynamic Cockpit Nose
       const noseGeo = new THREE.ConeGeometry(0.38, 1.1, 24);
       const noseMat = new THREE.MeshStandardMaterial({
         color: 0x8b5cf6,
@@ -83,66 +93,62 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
         roughness: 0.1,
       });
       const noseMesh = new THREE.Mesh(noseGeo, noseMat);
-      // Position at front tip along 45 degree angle
       noseMesh.position.set(1.15, 1.15, 0);
       noseMesh.rotation.z = -Math.PI / 4;
-      rocketGroup.add(noseMesh);
+      proceduralGroup.add(noseMesh);
 
-      // 3. Swept Delta Stabilizer Wings
-      const wingShape = new THREE.Shape();
-      wingShape.moveTo(0, 0);
-      wingShape.lineTo(-0.8, -0.6);
-      wingShape.lineTo(-0.4, 0.4);
-      wingShape.closePath();
+      // Load Master Blender GLB Model
+      const attachBlenderRocket = (clonedScene: THREE.Group) => {
+        clonedScene.scale.set(0.55, 0.55, 0.55);
+        clonedScene.rotation.z = -Math.PI / 4;
+        clonedScene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const m = child as THREE.Mesh;
+            m.castShadow = true;
+            m.receiveShadow = true;
+          }
+        });
+        rocketGroup.remove(proceduralGroup);
+        rocketGroup.add(clonedScene);
+        setModelSource('blender');
+      };
 
-      const wingExtrude = new THREE.ExtrudeGeometry(wingShape, { depth: 0.05, bevelEnabled: false });
-      const wingMat = new THREE.MeshStandardMaterial({
-        color: 0x1e293b,
-        metalness: 0.85,
-        roughness: 0.25,
-      });
+      if (cachedRocketGltf) {
+        attachBlenderRocket(cachedRocketGltf.clone());
+      } else {
+        const loader = new GLTFLoader();
+        loader.load(
+          '/assets/3d/rocket.glb',
+          (gltf) => {
+            cachedRocketGltf = gltf.scene;
+            attachBlenderRocket(gltf.scene.clone());
+          },
+          undefined,
+          (err) => {
+            console.warn('GLB rocket asset fallback to procedural engine:', err);
+          }
+        );
+      }
 
-      const wingLeft = new THREE.Mesh(wingExtrude, wingMat);
-      wingLeft.position.set(-0.2, -0.2, 0.35);
-      wingLeft.rotation.x = Math.PI / 2;
-      rocketGroup.add(wingLeft);
-
-      const wingRight = new THREE.Mesh(wingExtrude, wingMat);
-      wingRight.position.set(-0.2, -0.2, -0.35);
-      wingRight.rotation.x = -Math.PI / 2;
-      rocketGroup.add(wingRight);
-
-      // 4. Dual Thruster Nozzles
-      const nozzleGeo = new THREE.CylinderGeometry(0.18, 0.24, 0.4, 16);
-      const nozzleMat = new THREE.MeshStandardMaterial({
-        color: 0x334155,
-        metalness: 0.98,
-        roughness: 0.1,
-      });
-      const nozzleMesh = new THREE.Mesh(nozzleGeo, nozzleMat);
-      nozzleMesh.position.set(-0.95, -0.95, 0);
-      nozzleMesh.rotation.z = -Math.PI / 4;
-      rocketGroup.add(nozzleMesh);
-
-      // 5. Dynamic Animated Thruster Flame
-      const flameGeo = new THREE.ConeGeometry(0.24, 1.2, 16);
+      // Dynamic Animated Thruster Flame
+      const flameGeo = new THREE.ConeGeometry(0.25, 1.4, 16);
       const flameMat = new THREE.MeshStandardMaterial({
         color: 0xfbbf24,
         emissive: 0xf97316,
-        emissiveIntensity: 2.5,
+        emissiveIntensity: 2.8,
         transparent: true,
         opacity: 0.9,
       });
       const flameMesh = new THREE.Mesh(flameGeo, flameMat);
-      flameMesh.position.set(-1.6, -1.6, 0);
+      flameMesh.position.set(-1.45, -1.45, 0);
       flameMesh.rotation.z = Math.PI * 0.75;
       rocketGroup.add(flameMesh);
 
-      // 6. Particle Starfield
-      const starCount = 140;
+      // Particle Starfield
+      const starCount = 150;
       const starCoords = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount * 3; i += 3) {
-        starCoords[i] = (Math.random() - 0.5) * 14;
+        starCoords[i] = (Math.random() - 0.5) * 16;
         starCoords[i + 1] = (Math.random() - 0.5) * 12;
         starCoords[i + 2] = (Math.random() - 0.5) * 6;
       }
@@ -150,83 +156,95 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
       starsGeo.setAttribute('position', new THREE.BufferAttribute(starCoords, 3));
       const starsMat = new THREE.PointsMaterial({
         color: 0x38bdf8,
-        size: 0.045,
+        size: 0.05,
         transparent: true,
-        opacity: 0.75,
+        opacity: 0.8,
       });
       const starField = new THREE.Points(starsGeo, starsMat);
       scene.add(starField);
 
-      // 7. Particle Exhaust Sparks
-      const sparkCount = 30;
-      const sparkCoords = new Float32Array(sparkCount * 3);
-      for (let i = 0; i < sparkCount * 3; i += 3) {
-        sparkCoords[i] = -1.6 - Math.random() * 2;
-        sparkCoords[i + 1] = -1.6 - Math.random() * 2;
-        sparkCoords[i + 2] = (Math.random() - 0.5) * 0.4;
+      // Particle Exhaust Sparks
+      const sparkCount = 60;
+      const sparkPositions = new Float32Array(sparkCount * 3);
+      const sparkSpeeds: { vx: number; vy: number; life: number }[] = [];
+      for (let i = 0; i < sparkCount; i++) {
+        sparkPositions[i * 3] = -1.5;
+        sparkPositions[i * 3 + 1] = -1.5;
+        sparkPositions[i * 3 + 2] = 0;
+        sparkSpeeds.push({
+          vx: -(Math.random() * 0.08 + 0.04),
+          vy: -(Math.random() * 0.08 + 0.04),
+          life: Math.random(),
+        });
       }
       const sparksGeo = new THREE.BufferGeometry();
-      sparksGeo.setAttribute('position', new THREE.BufferAttribute(sparkCoords, 3));
+      sparksGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
       const sparksMat = new THREE.PointsMaterial({
         color: 0xf59e0b,
         size: 0.08,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.9,
       });
       const sparkField = new THREE.Points(sparksGeo, sparksMat);
       scene.add(sparkField);
 
-      let clock = new THREE.Clock();
+      let time = 0;
 
       const animate = () => {
         animationId = requestAnimationFrame(animate);
-        const elapsed = clock.getElapsedTime();
+        time += 0.04;
 
         if (gameState === 'FLYING') {
-          // Dynamic bank and throttle
-          const flameScale = 1.0 + Math.sin(elapsed * 25) * 0.18 + Math.min(multiplier * 0.05, 1.2);
+          // Dynamic cosmic wobble & ascent acceleration
+          rocketGroup.position.x = Math.sin(time * 2) * 0.12;
+          rocketGroup.position.y = Math.cos(time * 3) * 0.14 + (Math.min(multiplier, 10) * 0.04);
+          rocketGroup.rotation.z = Math.sin(time * 2.5) * 0.08;
+
+          // Expanding energetic thruster flame
+          const flameScale = 1.0 + Math.sin(time * 15) * 0.25;
           flameMesh.scale.set(flameScale, flameScale * 1.3, flameScale);
-          flameMesh.visible = true;
-          thrusterLight.intensity = 8 + Math.sin(elapsed * 20) * 3;
-          purpleLight.color.setHex(0xa855f7);
+          flameMat.emissiveIntensity = 3.5 + Math.sin(time * 20) * 1.5;
+          thrusterLight.intensity = 10 + Math.sin(time * 20) * 4;
 
-          // Flight turbulence
-          rocketGroup.position.y = Math.sin(elapsed * 6) * 0.14;
-          rocketGroup.position.x = Math.cos(elapsed * 5) * 0.08;
-          rocketGroup.rotation.z = Math.sin(elapsed * 3) * 0.05;
-
-          // Starfield and spark stream speed
-          const speed = Math.min(0.04 + (multiplier - 1) * 0.005, 0.25);
-          starField.position.x -= speed;
-          starField.position.y -= speed;
-          if (starField.position.x < -6) {
-            starField.position.x = 6;
-            starField.position.y = 6;
+          // Streaming starfield
+          const pos = starsGeo.attributes.position.array as Float32Array;
+          for (let i = 0; i < starCount * 3; i += 3) {
+            pos[i] -= 0.08;
+            pos[i + 1] -= 0.08;
+            if (pos[i] < -8) pos[i] = 8;
+            if (pos[i + 1] < -6) pos[i + 1] = 6;
           }
+          starsGeo.attributes.position.needsUpdate = true;
 
-          sparkField.position.x -= speed * 1.5;
-          sparkField.position.y -= speed * 1.5;
-          if (sparkField.position.x < -3) {
-            sparkField.position.x = 0;
-            sparkField.position.y = 0;
+          // Exhaust spark trails
+          const spk = sparksGeo.attributes.position.array as Float32Array;
+          for (let i = 0; i < sparkCount; i++) {
+            sparkSpeeds[i].life -= 0.025;
+            if (sparkSpeeds[i].life <= 0) {
+              spk[i * 3] = rocketGroup.position.x - 1.2;
+              spk[i * 3 + 1] = rocketGroup.position.y - 1.2;
+              spk[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+              sparkSpeeds[i].life = 1.0;
+            } else {
+              spk[i * 3] += sparkSpeeds[i].vx;
+              spk[i * 3 + 1] += sparkSpeeds[i].vy;
+            }
           }
+          sparksGeo.attributes.position.needsUpdate = true;
         } else if (gameState === 'CRASHED') {
-          // Emergency tumble & red alarm
-          rocketGroup.rotation.z += 0.12;
-          rocketGroup.rotation.x += 0.08;
-          flameMesh.visible = false;
-          purpleLight.color.setHex(0xef4444);
-          thrusterLight.color.setHex(0xef4444);
-          thrusterLight.intensity = 10;
+          // Crash tumble & extinguished engine
+          rocketGroup.rotation.z += 0.08;
+          rocketGroup.position.y -= 0.06;
+          flameMesh.scale.set(0.01, 0.01, 0.01);
+          flameMat.emissiveIntensity = 0;
+          thrusterLight.intensity = 0.5;
         } else {
-          // STARTING / IDLE: Gentle hovering on launch pad
-          rocketGroup.position.y = Math.sin(elapsed * 2) * 0.06;
-          rocketGroup.position.x = 0;
-          rocketGroup.rotation.z = 0;
+          // Idle floating hover
+          rocketGroup.position.set(0, Math.sin(time * 1.5) * 0.08, 0);
+          rocketGroup.rotation.z = Math.sin(time) * 0.04;
           flameMesh.scale.set(0.6, 0.6, 0.6);
-          flameMesh.visible = true;
+          flameMat.emissiveIntensity = 1.2;
           thrusterLight.intensity = 4;
-          purpleLight.color.setHex(0xa855f7);
         }
 
         if (renderer) {
@@ -264,17 +282,31 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
     };
   }, [gameState, isCrashed, multiplier]);
 
+  // Tor Safe High-Fidelity Holographic Flight Vector HUD
   if (!hasWebGL) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-900/90 rounded-2xl border border-slate-800 p-6 text-center min-h-[260px]">
-        <div className="text-5xl mb-3 animate-pulse">🚀</div>
+      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-950/90 rounded-2xl border border-purple-500/20 p-6 text-center min-h-[260px] relative overflow-hidden">
+        {/* Holographic scanning radar grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(168,85,247,0.05)_50%,transparent_100%)] animate-pulse pointer-events-none" />
+
+        <div className="relative w-32 h-32 rounded-full border-2 border-dashed border-purple-500/40 flex items-center justify-center mb-3">
+          <div className={`text-5xl transition-transform duration-300 ${
+            gameState === 'FLYING' ? '-rotate-45 scale-110 animate-bounce' : gameState === 'CRASHED' ? 'rotate-90 opacity-50' : ''
+          }`}>
+            🚀
+          </div>
+          <span className="absolute inset-2 rounded-full border border-cyan-500/30 animate-spin" />
+        </div>
+
         <div className={`text-4xl font-heading font-black tracking-wider mb-2 ${
           gameState === 'CRASHED' ? 'text-rose-500' : 'text-primary'
         }`}>
-          {gameState === 'CRASHED' ? 'CRASHED @ ' + multiplier.toFixed(2) + 'x' : `${multiplier.toFixed(2)}x`}
+          {gameState === 'CRASHED' ? `CRASHED @ ${multiplier.toFixed(2)}x` : `${multiplier.toFixed(2)}x`}
         </div>
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-          Tor Safe 2D Flight Mode Active
+
+        <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest bg-slate-900 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          Tor Stealth Flight HUD Active (Zero Fingerprint)
         </span>
       </div>
     );
@@ -283,9 +315,13 @@ export default function CrashRocketCanvas({ multiplier, isCrashed, gameState }: 
   return (
     <div className="relative w-full h-full min-h-[260px]">
       <div ref={mountRef} className="w-full h-full" />
-      <div className="absolute bottom-2 right-3 text-[10px] font-mono text-purple-300 uppercase tracking-wider bg-slate-900/90 px-2 py-0.5 rounded border border-purple-500/40 flex items-center gap-1.5 shadow-lg">
+      <div className="absolute bottom-2 right-3 text-[10px] font-mono text-purple-300 uppercase tracking-wider bg-slate-900/90 px-2.5 py-1 rounded border border-purple-500/40 flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-cta animate-ping"></span>
-        <span>CypherRocket 3D Engine (Sub-50ms Flight)</span>
+        <span>
+          {modelSource === 'blender'
+            ? 'CypherRocket 3D (Blender Master Asset)'
+            : 'CypherRocket 3D Engine (Sub-50ms Flight)'}
+        </span>
       </div>
     </div>
   );
