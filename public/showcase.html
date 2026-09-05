@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CypherRoll — 3D Blender Production Showcase</title>
+  <style>
+    :root {
+      --bg: #07090e;
+      --primary: #f59e0b;
+      --cyan: #06b6d4;
+      --violet: #a855f7;
+      --text: #f8fafc;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+    }
+    #webgl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+    /* UI Overlay */
+    .ui-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+    }
+    .header {
+      pointer-events: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(13, 18, 30, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      padding: 14px 24px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .title-group h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #f59e0b, #ec4899, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .title-group p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      font-family: monospace;
+    }
+    .model-selector {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #000;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+    }
+    /* Loading Spinner */
+    #loader {
+      position: absolute;
+      inset: 0;
+      background: #07090e;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(245, 158, 11, 0.15);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .progress-bar-container {
+      width: 200px;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--cyan));
+      transition: width 0.2s ease;
+    }
+    .status-text {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    /* Controls Help */
+    .footer {
+      pointer-events: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: #64748b;
+    }
+    .badge {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+  </style>
+
+  <!-- Import Maps for Modern Three.js ES Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Three.js Canvas Container -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Preloader -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <div class="progress-bar-container">
+      <div id="progress-bar"></div>
+    </div>
+    <div id="status-text" class="status-text">INITIALIZING GRAPHICS PIPELINE...</div>
+  </div>
+
+  <!-- UI Overlay -->
+  <div class="ui-layer">
+    <div class="header">
+      <div class="title-group">
+        <h1>CypherRoll 3D Production Studio</h1>
+        <p>PBR Tone-Mapped • Color-Managed • Cinematic Bloom</p>
+      </div>
+      <div class="model-selector">
+        <button class="btn active" data-model="/assets/3d/dice.glb">Dice</button>
+        <button class="btn" data-model="/assets/3d/rocket.glb">Rocket</button>
+        <button class="btn" data-model="/assets/3d/chip.glb">VIP Chip</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="badge">Drag to Orbit • Scroll to Zoom • Right-Click to Pan</div>
+      <div class="badge" id="gpu-info">ACESFilmic • sRGB • 60 FPS</div>
+    </div>
+  </div>
+
+  <!-- Main Three.js Application Logic -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+    import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+    class ProductionViewer {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.currentModelGroup = new THREE.Group();
+        this.modelCache = new Map();
+        this.clock = new THREE.Clock();
+
+        this.initRenderer();
+        this.initScene();
+        this.initCamera();
+        this.initControls();
+        this.initEnvironment();
+        this.initPostProcessing();
+        this.initLoaders();
+        this.initEventListeners();
+
+        // Load initial asset
+        this.loadModel('/assets/3d/dice.glb');
+
+        this.animate = this.animate.bind(this);
+        requestAnimationFrame(this.animate);
+      }
+
+      /* =========================================================================
+         1. RENDERER INITIALIZATION (Color Space & Tone Mapping Hardening)
+         ========================================================================= */
+      initRenderer() {
+        this.renderer = new THREE.WebGLRenderer({
+          canvas: this.canvas,
+          antialias: false, // Managed by FXAA in composer to save GPU cycles
+          alpha: true,
+          powerPreference: 'high-performance',
+          stencil: false,
+          depth: true,
+        });
+
+        // Loophole 1 Fix: Explicit sRGB color space output
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        // Loophole 2 Fix: ACESFilmic dynamic range tone mapping to prevent blowout
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.1;
+
+        // Performance: Cap device pixel ratio at 2.0 to prevent 4K mobile thermal throttling
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        this.renderer.setPixelRatio(pixelRatio);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      }
+
+      initScene() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x07090e);
+        this.scene.add(this.currentModelGroup);
+
+        // Studio lighting accents (Key, Rim, Fill)
+        const keyLight = new THREE.DirectionalLight(0xfff3d6, 2.5);
+        keyLight.position.set(5, 8, 5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 1024;
+        keyLight.shadow.mapSize.height = 1024;
+        keyLight.shadow.bias = -0.0001;
+        this.scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0x06b6d4, 3.0);
+        rimLight.position.set(-6, -2, -4);
+        this.scene.add(rimLight);
+
+        const fillLight = new THREE.PointLight(0xa855f7, 4.0, 15);
+        fillLight.position.set(0, -3, 3);
+        this.scene.add(fillLight);
+      }
+
+      initCamera() {
+        this.camera = new THREE.PerspectiveCamera(
+          45,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          100
+        );
+        this.camera.position.set(0, 1.8, 4.2);
+      }
+
+      initControls() {
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.minDistance = 1.5;
+        this.controls.maxDistance = 12.0;
+        this.controls.maxPolarAngle = Math.PI / 2 + 0.1;
+        this.controls.target.set(0, 0, 0);
+      }
+
+      /* =========================================================================
+         2. ENVIRONMENT & PBR RADIANCE (Realistic Metal/Roughness Reflections)
+         ========================================================================= */
+      initEnvironment() {
+        const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        // High-fidelity fallback PBR environment via PMREM RoomEnvironment
+        const roomEnv = new RoomEnvironment();
+        this.scene.environment = pmremGenerator.fromScene(roomEnv, 0.04).texture;
+        roomEnv.dispose();
+
+        // Support for custom .hdr environments:
+        const rgbeLoader = new RGBELoader();
+        rgbeLoader.setDataType(THREE.FloatType);
+        // rgbeLoader.load('/assets/env/studio.hdr', (texture) => {
+        //   texture.mapping = THREE.EquirectangularReflectionMapping;
+        //   this.scene.environment = texture;
+        // });
+      }
+
+      /* =========================================================================
+         3. CINEMATIC POST-PROCESSING PIPELINE (Bloom, Color Grade & FXAA)
+         ========================================================================= */
+      initPostProcessing() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const pr = this.renderer.getPixelRatio();
+
+        // WebGLRenderTarget with FloatType for HDR Bloom buffering
+        const renderTarget = new THREE.WebGLRenderTarget(width * pr, height * pr, {
+          type: THREE.HalfFloatType,
+          format: THREE.RGBAFormat,
+        });
+
+        this.composer = new EffectComposer(this.renderer, renderTarget);
+
+        // Pass 1: Scene Render
+        const renderPass = new RenderPass(this.scene, this.camera);
+        this.composer.addPass(renderPass);
+
+        // Pass 2: Calibrated UnrealBloom (tight, cinematic threshold)
+        this.bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(width, height),
+          0.38,  // Strength
+          0.45,  // Radius
+          0.82   // Threshold
+        );
+        this.composer.addPass(this.bloomPass);
+
+        // Pass 3: OutputPass for correct color space transform
+        const outputPass = new OutputPass();
+        this.composer.addPass(outputPass);
+
+        // Pass 4: FXAA Anti-Aliasing (Smoothing pixel edges post-bloom)
+        this.fxaaPass = new ShaderPass(FXAAShader);
+        this.fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pr);
+        this.fxaaPass.material.uniforms['resolution'].value.y = 1 / (height * pr);
+        this.composer.addPass(this.fxaaPass);
+      }
+
+      /* =========================================================================
+         4. GLTF LOADER & MATERIAL COLOR-SPACE NORMALIZATION
+         ========================================================================= */
+      initLoaders() {
+        this.dracoLoader = new DRACOLoader();
+        this.dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+
+        this.gltfLoader = new GLTFLoader();
+        this.gltfLoader.setDRACOLoader(this.dracoLoader);
+      }
+
+      loadModel(url) {
+        const progressBar = document.getElementById('progress-bar');
+        const loaderEl = document.getElementById('loader');
+        const statusText = document.getElementById('status-text');
+
+        loaderEl.classList.remove('hidden');
+        statusText.textContent = `FETCHING BLENDER MODEL (${url.split('/').pop()})...`;
+
+        if (this.modelCache.has(url)) {
+          this.displayModel(this.modelCache.get(url).clone());
+          loaderEl.classList.add('hidden');
+          return;
+        }
+
+        this.gltfLoader.load(
+          url,
+          (gltf) => {
+            // LOOPHOLE 1 FIX: Traverse and enforce exact Color Space rules on all textures
+            gltf.scene.traverse((node) => {
+              if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+
+                const materials = Array.isArray(node.material) ? node.material : [node.material];
+                materials.forEach((mat) => {
+                  if (!mat) return;
+
+                  // 1. Base Color / Diffuse Map MUST be SRGB
+                  if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
+
+                  // 2. Emissive Map MUST be SRGB
+                  if (mat.emissiveMap) mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+
+                  // 3. Data Maps (Normal, Roughness, Metalness, AO) MUST be LinearSRGB
+                  if (mat.normalMap) mat.normalMap.colorSpace = THREE.LinearSRGBColorSpace;
+                  if (mat.roughnessMap) mat.roughnessMap.colorSpace = THREE.LinearSRGBColorSpace;
+                  if (mat.metalnessMap) mat.metalnessMap.colorSpace = THREE.LinearSRGBColorSpace;
+                  if (mat.aoMap) mat.aoMap.colorSpace = THREE.LinearSRGBColorSpace;
+
+                  mat.needsUpdate = true;
+                });
+              }
+            });
+
+            this.modelCache.set(url, gltf.scene);
+            this.displayModel(gltf.scene.clone());
+
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+              loaderEl.classList.add('hidden');
+            }, 300);
+          },
+          (xhr) => {
+            if (xhr.total > 0) {
+              const pct = (xhr.loaded / xhr.total) * 100;
+              progressBar.style.width = `${pct}%`;
+              statusText.textContent = `STREAMING 3D ASSET: ${Math.round(pct)}%`;
+            }
+          },
+          (error) => {
+            console.error('Critical 3D Load Error:', error);
+            statusText.textContent = 'ERROR LOADING ASSET. CHECKING TOR/NETWORK FALLBACK...';
+          }
+        );
+      }
+
+      displayModel(model) {
+        while (this.currentModelGroup.children.length > 0) {
+          const obj = this.currentModelGroup.children[0];
+          this.currentModelGroup.remove(obj);
+        }
+
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2.0 / (maxDim || 1);
+        model.scale.setScalar(scale);
+
+        model.position.x = -center.x * scale;
+        model.position.y = -center.y * scale;
+        model.position.z = -center.z * scale;
+
+        this.currentModelGroup.add(model);
+      }
+
+      /* =========================================================================
+         5. RESIZING & RENDER LOOP
+         ========================================================================= */
+      initEventListeners() {
+        window.addEventListener('resize', () => {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const pr = Math.min(window.devicePixelRatio || 1, 2);
+
+          this.camera.aspect = w / h;
+          this.camera.updateProjectionMatrix();
+
+          this.renderer.setSize(w, h);
+          this.renderer.setPixelRatio(pr);
+          this.composer.setSize(w, h);
+
+          if (this.fxaaPass) {
+            this.fxaaPass.material.uniforms['resolution'].value.x = 1 / (w * pr);
+            this.fxaaPass.material.uniforms['resolution'].value.y = 1 / (h * pr);
+          }
+        });
+
+        // Model switcher buttons
+        document.querySelectorAll('.btn[data-model]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            const modelUrl = btn.getAttribute('data-model');
+            this.loadModel(modelUrl);
+          });
+        });
+      }
+
+      animate() {
+        requestAnimationFrame(this.animate);
+        const delta = this.clock.getDelta();
+
+        if (this.currentModelGroup) {
+          this.currentModelGroup.rotation.y += delta * 0.25;
+        }
+
+        this.controls.update();
+        this.composer.render();
+      }
+    }
+
+    // Mount on DOM Ready
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('webgl-canvas');
+      window.viewer = new ProductionViewer(canvas);
+    });
+  </script>
+</body>
+</html>
