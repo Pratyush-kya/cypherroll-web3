@@ -187,22 +187,21 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
         // Scale adjustment for web
         clonedScene.scale.set(1.1, 1.1, 1.1);
         
-        // Generate native WebGL materials to bypass HTML rendering issues
+        // Generate native WebGL materials
         const diceMaterial = new THREE.MeshPhysicalMaterial({
           color: 0xcc0011, // Solid rich casino red
           metalness: 0.15,
-          roughness: 0.15, // Glossy plastic/resin look
-          clearcoat: 1.0,
+          roughness: 0.10, // Glossy plastic/resin look
+          clearcoat: 1.0,  // Glazed corners
           clearcoatRoughness: 0.2,
           sheen: 1.0,
           sheenColor: new THREE.Color(0xffd700), // Light gold glaze
         });
         
         const pipMaterial = new THREE.MeshStandardMaterial({
-          color: 0xffffff, // Pure white
-          emissive: 0xffffff,
-          emissiveIntensity: 0.8, // Bright contrast
-          roughness: 0.2
+          color: 0xffffff, // Normal white dots (no extreme emissive/glaze)
+          roughness: 0.5,
+          metalness: 0.0
         });
 
         clonedScene.traverse((child) => {
@@ -210,11 +209,12 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
             const m = child as THREE.Mesh;
             m.castShadow = true;
             m.receiveShadow = true;
-            // Apply materials based on Blender explicitly named meshes
-            if (m.name.includes("Dice")) {
+            
+            // Foolproof mesh identification
+            if (m.name.includes("Cube")) {
                 m.material = diceMaterial;
-            } else if (m.name.includes("Pip")) {
-                m.material = pipMaterial; // Pips/dots
+            } else if (m.name.includes("Cylinder")) {
+                m.material = pipMaterial;
             }
           }
         });
@@ -234,7 +234,7 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       } else {
         const loader = new GLTFLoader();
         loader.load(
-          '/assets/3d/dice.glb?v=' + Date.now(),
+          '/assets/3d/dice_v3.glb?v=' + Date.now(),
           (gltf) => {
             cachedDiceGltf = gltf.scene;
             attachBlenderModel(gltf.scene.clone());
