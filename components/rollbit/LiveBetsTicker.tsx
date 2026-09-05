@@ -82,46 +82,68 @@ export default function LiveBetsTicker() {
           </span>
         </div>
 
-        {/* Realtime Bets Stream */}
-        <div className="flex items-center gap-3 overflow-x-auto text-slate-300 flex-1 max-w-4xl scrollbar-none py-0.5">
+        {/* Realtime Bets Stream - Infinite Marquee */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes ticker-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          .animate-ticker {
+            animation: ticker-scroll 90s linear infinite;
+            display: flex;
+            width: max-content;
+          }
+          .animate-ticker:hover {
+            animation-play-state: paused;
+          }
+          .blur-edges {
+            mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+          }
+        `}} />
+        
+        <div className="flex-1 overflow-hidden relative max-w-5xl blur-edges flex items-center">
           {bets.length === 0 ? (
-            <span className="text-slate-500 text-[11px]">Connecting to Realtime Ledger...</span>
+            <span className="text-slate-500 text-[11px] whitespace-nowrap pl-4">Realtime Ledger active • Awaiting live player wagers...</span>
           ) : (
-            bets.map((bet, idx) => (
-              <div
-                key={bet.id || idx}
-                className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-[11px] flex-shrink-0 transition-all duration-300 ${
-                  idx === 0 && pulseNew
-                    ? 'scale-105 shadow-md shadow-amber-500/20'
-                    : ''
-                } ${
-                  bet.won
-                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                    : 'bg-slate-900/80 border-slate-800 text-slate-400'
-                }`}
-              >
-                <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-slate-950/80 border border-slate-700/60">
-                  {bet.game_type === 'DICE' ? '🎲 DICE' : '🚀 CRASH'}
-                </span>
-                <span className="font-medium text-slate-200">
-                  {truncateHash(bet.wallet_address, 4, 3)}
-                </span>
-                <span className="font-bold">
-                  {bet.won ? (
-                    <span className="text-emerald-400 font-black">
-                      +${Number(bet.profit || bet.payout).toFixed(2)}
-                    </span>
-                  ) : (
-                    <span className="text-rose-400">
-                      -${Math.abs(Number(bet.profit || bet.wager)).toFixed(2)}
-                    </span>
-                  )}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  ({Number(bet.target_payout || 1).toFixed(2)}×)
-                </span>
-              </div>
-            ))
+            <div className="animate-ticker gap-3 py-0.5 px-3">
+              {/* Duplicate the bets massively to guarantee seamless scrolling even on ultrawide monitors */}
+              {[...bets, ...bets, ...bets, ...bets].map((bet, idx) => (
+                <div
+                  key={`${bet.id}-${idx}`}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-[11px] flex-shrink-0 transition-all duration-300 ${
+                    idx === 0 && pulseNew
+                      ? 'scale-105 shadow-md shadow-amber-500/20'
+                      : ''
+                  } ${
+                    bet.won
+                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                      : 'bg-slate-900/80 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <span className="text-[10px] px-1 py-0.2 rounded font-bold bg-slate-950/80 border border-slate-700/60">
+                    {bet.game_type === 'DICE' ? '🎲 DICE' : '🚀 CRASH'}
+                  </span>
+                  <span className="font-medium text-slate-200">
+                    {truncateHash(bet.wallet_address, 4, 3)}
+                  </span>
+                  <span className="font-bold">
+                    {bet.won ? (
+                      <span className="text-emerald-400 font-black">
+                        +${Number(bet.profit || bet.payout).toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-rose-400">
+                        -${Math.abs(Number(bet.profit || bet.wager)).toFixed(2)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    ({Number(bet.target_payout || 1).toFixed(2)}×)
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

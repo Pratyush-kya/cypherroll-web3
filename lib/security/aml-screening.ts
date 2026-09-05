@@ -5,6 +5,7 @@
  */
 
 import crypto from 'crypto';
+import { recordSanctionsQuarantine } from '@/lib/supabase';
 
 export interface AMLScreeningResult {
   wallet: string;
@@ -110,4 +111,13 @@ export function quarantineDeposit(txHash: string, wallet: string, amount: number
     timestamp: new Date().toISOString(),
   });
   console.warn(`[AML QUARANTINE] Deposit ${txHash} from ${wallet} quarantined: ${reason}`);
+
+  // Persist to Supabase aml_sanctions_quarantine table defensively
+  recordSanctionsQuarantine({
+    txHash,
+    wallet,
+    amount,
+    reason,
+    riskScore: 100,
+  }).catch(() => {});
 }

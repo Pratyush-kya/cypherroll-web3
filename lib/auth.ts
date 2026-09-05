@@ -2,6 +2,9 @@ import crypto from 'crypto';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cypherroll-super-secret-production-key-999';
 
+// 1 Year (365 Days) Permanent Session Lifetime
+export const SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60; // 31,536,000s
+
 export function signSession(data: object): string {
   const payload = Buffer.from(JSON.stringify(data)).toString('base64url');
   const signature = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');

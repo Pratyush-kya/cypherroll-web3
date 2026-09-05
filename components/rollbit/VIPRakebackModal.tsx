@@ -130,6 +130,26 @@ export default function VIPRakebackModal({
           </button>
         </div>
 
+        {/* Deterministic Mathematical Breakdown */}
+        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-5">
+          <div className="flex items-center gap-2 mb-2 border-b border-slate-800 pb-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-heading font-bold text-slate-200">Open-Source Math Guarantee</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-[10px] font-mono text-slate-400">
+            <div>
+              <span className="block text-slate-500 mb-0.5">Base Formula</span>
+              <span className="text-emerald-400 font-bold block">Rakeback = (Wager × 1% Edge) × Rate</span>
+              <span className="mt-1 block leading-tight">We hardcode the House Edge at exactly 1%. No hidden variable edges based on player win streaks.</span>
+            </div>
+            <div>
+              <span className="block text-slate-500 mb-0.5">Example (Your Tier: {TIERS[currentTierIndex]?.rakebackPct})</span>
+              <span className="text-emerald-400 font-bold block">$1,000 Wager = ${((1000 * 0.01) * (parseFloat(TIERS[currentTierIndex]?.rakebackPct || '10') / 100)).toFixed(2)} Cash</span>
+              <span className="mt-1 block leading-tight">You instantly reclaim {TIERS[currentTierIndex]?.rakebackPct} of the house's 1% mathematical advantage on every single bet.</span>
+            </div>
+          </div>
+        </div>
+
         {/* Tier Benefits Summary */}
         <div className="grid grid-cols-5 gap-1 text-center font-mono text-[10px]">
           {TIERS.map((t, idx) => (

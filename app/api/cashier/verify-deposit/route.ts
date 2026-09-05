@@ -20,9 +20,9 @@ export async function POST(req: Request) {
     const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/);
     const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
 
-    const effectiveWallet = session?.wallet || walletAddress;
+    const effectiveWallet = session?.wallet;
     if (!effectiveWallet) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      return NextResponse.json({ error: 'Authentication required. Please connect and sign in with your Web3 wallet.' }, { status: 401 });
     }
 
     const targetNetwork = (network || 'BASE').toUpperCase() as 'BASE' | 'ARB' | 'SOL';

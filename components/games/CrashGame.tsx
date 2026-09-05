@@ -11,8 +11,10 @@ type GameStatus = 'STARTING' | 'FLYING' | 'CRASHED';
 interface ActiveBet {
   wallet: string;
   wager: number;
+  autoCashoutMultiplier?: number;
   cashedOut: boolean;
   cashedOutAt?: number;
+  isAutoCashout?: boolean;
 }
 
 interface CrashGameProps {
@@ -20,23 +22,33 @@ interface CrashGameProps {
   balance: number;
   setBalance: React.Dispatch<React.SetStateAction<number>>;
   onBetPlaced?: (rakeback: number, vip: string) => void;
+  isDemoMode?: boolean;
 }
 
-export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced }: CrashGameProps) {
+export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced, isDemoMode }: CrashGameProps) {
   const [status, setStatus] = useState<GameStatus>('STARTING');
   const [multiplier, setMultiplier] = useState<number>(1.00);
   const [countdown, setCountdown] = useState<number>(5.0);
   const [crashPoint, setCrashPoint] = useState<number | undefined>(undefined);
   const [serverSeedHash, setServerSeedHash] = useState<string>('');
   const [activeBets, setActiveBets] = useState<ActiveBet[]>([]);
-  const [history, setHistory] = useState<number[]>([1.45, 3.22, 1.12, 14.80, 2.05]);
+  const [history, setHistory] = useState<number[]>([]);
 
   const [wager, setWager] = useState<number>(15);
+  const [autoCashoutTarget, setAutoCashoutTarget] = useState<string>('');
   const [hasBetThisRound, setHasBetThisRound] = useState<boolean>(false);
   const [hasCashedOut, setHasCashedOut] = useState<boolean>(false);
   const [cashedOutAt, setCashedOutAt] = useState<number | null>(null);
+  const [wasAutoCashout, setWasAutoCashout] = useState<boolean>(false);
   const [isAuditorOpen, setIsAuditorOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [pingMs, setPingMs] = useState<number | null>(null);
+  const [modalSeedParams, setModalSeedParams] = useState<{
+    serverSeed?: string;
+    serverSeedHash?: string;
+    clientSeed?: string;
+    nonce?: number;
+  }>({});
 
   // Connect to Realtime Multiplayer SSE Stream
   useEffect(() => {
@@ -60,6 +72,7 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
           if (data.status === 'STARTING') {
             setHasCashedOut(false);
             setCashedOutAt(null);
+            setWasAutoCashout(false);
           }
         } catch {
           // ignore parsing error
@@ -88,38 +101,73 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
     };
   }, []);
 
-  // Check if current user is in activeBets
+  // Measure network latency (RTT) to server every 10 seconds
   useEffect(() => {
-    if (!userWallet) return;
-    const myBet = activeBets.find((b) => b.wallet === userWallet);
+    const measurePing = async () => {
+      try {
+        const start = performance.now();
+        await fetch('/api/games/crash/ping');
+        setPingMs(Math.round(performance.now() - start));
+      } catch {
+        setPingMs(null);
+      }
+    };
+    measurePing();
+    const interval = setInterval(measurePing, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const effectivePlayerId = isDemoMode
+    ? 'demo_' + (userWallet ? userWallet.substring(0, 6) : 'player')
+    : userWallet;
+
+  // Check if current user is in activeBets (including server-side auto-cashout detection)
+  useEffect(() => {
+    if (!effectivePlayerId) return;
+    const myBet = activeBets.find((b) => b.wallet === effectivePlayerId);
     if (myBet) {
       setHasBetThisRound(true);
-      if (myBet.cashedOut && myBet.cashedOutAt) {
+      if (myBet.cashedOut && myBet.cashedOutAt && !hasCashedOut) {
         setHasCashedOut(true);
         setCashedOutAt(myBet.cashedOutAt);
+        // Server-side auto-cashout detected — credit balance for demo mode
+        if (myBet.isAutoCashout) {
+          setWasAutoCashout(true);
+          if (isDemoMode) {
+            const winPayout = parseFloat((wager * myBet.cashedOutAt).toFixed(2));
+            setBalance((prev) => parseFloat((prev + winPayout).toFixed(2)));
+          }
+        }
       }
     } else if (status === 'STARTING') {
       setHasBetThisRound(false);
     }
-  }, [activeBets, userWallet, status]);
+  }, [activeBets, effectivePlayerId, status]);
 
   const handlePlaceBet = async () => {
     if (wager <= 0 || wager > balance || status !== 'STARTING' || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
+      const parsedAuto = autoCashoutTarget.trim() ? parseFloat(autoCashoutTarget) : undefined;
       const res = await fetch('/api/games/crash/bet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: userWallet || 'Anon_Player',
+          walletAddress: effectivePlayerId,
           wager,
+          isDemo: Boolean(isDemoMode),
+          autoCashout: parsedAuto && parsedAuto >= 1.01 ? parsedAuto : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to place bet');
 
-      setBalance(data.newBalance);
+      if (isDemoMode) {
+        setBalance((prev) => parseFloat((prev - wager).toFixed(2)));
+      } else {
+        setBalance(data.newBalance);
+      }
       setHasBetThisRound(true);
     } catch (err: any) {
       alert(err.message || 'Error placing bet');
@@ -129,7 +177,7 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
   };
 
   const handleCashOut = async () => {
-    if (status !== 'FLYING' || !hasBetThisRound || hasCashedOut || isSubmitting) return;
+    if (!hasBetThisRound || hasCashedOut || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -137,17 +185,27 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: userWallet || 'Anon_Player',
+          walletAddress: effectivePlayerId,
+          isDemo: Boolean(isDemoMode),
+          clientMultiplier: multiplier,
+          clientTimestamp: Date.now(),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Cashout failed');
 
-      setBalance(data.newBalance);
+      if (!data.alreadyCashedOut) {
+        if (isDemoMode) {
+          const winPayout = parseFloat((wager * data.multiplier).toFixed(2));
+          setBalance((prev) => parseFloat((prev + winPayout).toFixed(2)));
+        } else {
+          setBalance(data.newBalance);
+        }
+      }
       setHasCashedOut(true);
       setCashedOutAt(data.multiplier);
 
-      if (onBetPlaced) {
+      if (onBetPlaced && !isDemoMode) {
         onBetPlaced(data.rakeback, data.vipTier);
       }
     } catch (err: any) {
@@ -173,11 +231,19 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
           </div>
 
           <button
-            onClick={() => setIsAuditorOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-primary transition-colors bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800"
+            onClick={() => {
+              setModalSeedParams({
+                serverSeed: '',
+                serverSeedHash,
+                clientSeed: 'global_crash_seed_1',
+                nonce: 1,
+              });
+              setIsAuditorOpen(true);
+            }}
+            className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-950/40 hover:bg-emerald-900/50 px-2.5 py-1 rounded-lg border border-emerald-500/40 shadow-sm font-bold"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-            <span>Audit</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Verify Fairness</span>
           </button>
         </div>
 
@@ -221,18 +287,30 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
 
         {/* Recent Crashes Multipliers */}
         <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 border-t border-slate-800 pt-3">
-          <span className="text-[10px] font-mono text-slate-500 uppercase flex-shrink-0">Past Crashes:</span>
+          <span className="text-[10px] font-mono text-slate-500 uppercase flex-shrink-0">Past Crashes (Click to Verify):</span>
           {history.map((h, i) => (
-            <span
+            <button
               key={i}
-              className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold flex-shrink-0 border ${
+              type="button"
+              onClick={() => {
+                setModalSeedParams({
+                  serverSeed: '',
+                  serverSeedHash,
+                  clientSeed: 'global_crash_seed_1',
+                  nonce: Math.max(1, i + 1),
+                });
+                setIsAuditorOpen(true);
+              }}
+              title={`Click to 1-Click Verify ${h.toFixed(2)}x Crash Outcome`}
+              className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold flex-shrink-0 border transition hover:scale-105 active:scale-95 flex items-center gap-1 ${
                 h >= 2.0
-                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
-                  : 'bg-slate-950 border-slate-800 text-slate-400'
+                  ? 'bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400'
+                  : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-slate-400'
               }`}
             >
-              {h.toFixed(2)}×
-            </span>
+              <span>{h.toFixed(2)}×</span>
+              <ShieldCheck className="w-2.5 h-2.5 opacity-60" />
+            </button>
           ))}
         </div>
 
@@ -296,6 +374,61 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
             </div>
           </div>
 
+          {/* Auto-Cashout Target Input */}
+          <div className="mb-4">
+            <label className="block text-xs font-mono text-slate-400 mb-1.5">
+              Auto-Cashout Multiplier (Optional)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min="1.01"
+                max="10000"
+                step="0.01"
+                value={autoCashoutTarget}
+                disabled={status === 'FLYING' || hasBetThisRound}
+                onChange={(e) => setAutoCashoutTarget(e.target.value)}
+                placeholder="e.g. 2.50"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-heading font-bold text-foreground focus:outline-none focus:border-amber-500/60 placeholder-slate-600"
+              />
+              <div className="absolute right-2 top-1.5 flex gap-1">
+                {[1.5, 2, 5, 10].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    disabled={hasBetThisRound}
+                    onClick={() => setAutoCashoutTarget(preset.toString())}
+                    className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-mono rounded text-slate-300 transition-colors"
+                  >
+                    {preset}×
+                  </button>
+                ))}
+              </div>
+            </div>
+            {autoCashoutTarget && parseFloat(autoCashoutTarget) >= 1.01 && (
+              <span className="text-[10px] font-mono text-amber-400 mt-1 block">
+                ⚡ Server-side execution — guaranteed even if you disconnect
+              </span>
+            )}
+          </div>
+
+          {/* Network Latency Indicator */}
+          <div className="flex items-center gap-2 mb-4 px-2 py-1.5 bg-slate-950 rounded-lg border border-slate-800/60">
+            <span className={`w-2 h-2 rounded-full ${
+              pingMs === null ? 'bg-slate-600' :
+              pingMs < 80 ? 'bg-emerald-400' :
+              pingMs < 200 ? 'bg-amber-400' : 'bg-rose-400'
+            }`} />
+            <span className="text-[10px] font-mono text-slate-400">
+              Ping: {pingMs !== null ? `${pingMs}ms` : '—'}
+            </span>
+            {pingMs !== null && pingMs > 150 && (
+              <span className="text-[10px] font-mono text-amber-300">
+                (High latency — use Auto-Cashout for safety)
+              </span>
+            )}
+          </div>
+
           {/* Dynamic Win Display */}
           {status === 'FLYING' && hasBetThisRound && !hasCashedOut && (
             <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 text-center mb-4 animate-pulse">
@@ -308,10 +441,17 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
 
           {hasCashedOut && (
             <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-center mb-4">
-              <span className="text-xs font-mono text-emerald-300 block uppercase">Cashed Out At {cashedOutAt?.toFixed(2)}×</span>
+              <span className="text-xs font-mono text-emerald-300 block uppercase">
+                {wasAutoCashout ? '⚡ Auto-Cashed Out At' : 'Cashed Out At'} {cashedOutAt?.toFixed(2)}×
+              </span>
               <span className="text-2xl font-heading font-black text-emerald-400">
                 +${(wager * (cashedOutAt ?? 1)).toFixed(2)} Win
               </span>
+              {wasAutoCashout && (
+                <span className="text-[10px] font-mono text-amber-300 block mt-1">
+                  Server-side auto-cashout executed — disconnect-proof ⚡
+                </span>
+              )}
             </div>
           )}
 
@@ -333,11 +473,20 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
                     <span className="text-slate-300 truncate max-w-[100px]">
                       {truncateHash(b.wallet, 4, 3)}
                     </span>
-                    <span className="text-foreground">${b.wager.toFixed(2)}</span>
+                    <span className="text-foreground flex items-center gap-1">
+                      ${b.wager.toFixed(2)}
+                      {b.autoCashoutMultiplier && !b.cashedOut && (
+                        <span className="text-[9px] text-amber-400" title={`Auto-cashout at ${b.autoCashoutMultiplier}×`}>⚡{b.autoCashoutMultiplier}×</span>
+                      )}
+                    </span>
                     <span>
                       {b.cashedOut ? (
-                        <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                          {b.cashedOutAt?.toFixed(2)}×
+                        <span className={`font-bold px-1.5 py-0.5 rounded border ${
+                          b.isAutoCashout
+                            ? 'text-amber-300 bg-amber-500/10 border-amber-500/30'
+                            : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                        }`}>
+                          {b.isAutoCashout ? '⚡' : ''}{b.cashedOutAt?.toFixed(2)}×
                         </span>
                       ) : status === 'CRASHED' ? (
                         <span className="text-rose-400 font-bold">Bust</span>
@@ -371,7 +520,11 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
                 : 'bg-cta hover:bg-purple-600 text-white shadow-purple-600/30'
             }`}
           >
-            {hasBetThisRound ? 'BET PLACED (WAITING FOR LAUNCH)' : `BET FOR NEXT ROUND ($${wager})`}
+            {hasBetThisRound
+              ? 'BET PLACED (WAITING FOR LAUNCH)'
+              : isDemoMode
+                ? `DEMO BET FOR NEXT ROUND ($${wager})`
+                : `BET FOR NEXT ROUND ($${wager})`}
           </button>
         ) : (
           <button
@@ -386,9 +539,12 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
       <ProvablyFairModal
         isOpen={isAuditorOpen}
         onClose={() => setIsAuditorOpen(false)}
-        initialServerSeed=""
-        initialClientSeed="global_crash_seed_1"
-        initialNonce={1}
+        initialServerSeed={modalSeedParams.serverSeed || ''}
+        initialServerSeedHash={modalSeedParams.serverSeedHash || serverSeedHash}
+        initialClientSeed={modalSeedParams.clientSeed || 'global_crash_seed_1'}
+        initialNonce={modalSeedParams.nonce || 1}
+        initialGameType="CRASH"
+        isDemoMode={isDemoMode}
       />
     </div>
   );

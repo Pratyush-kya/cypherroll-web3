@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { verifyMessage } from 'viem';
 import bs58Import from 'bs58';
 import { getOrCreatePlayer } from '@/lib/supabase';
-import { signSession } from '@/lib/auth';
+import { signSession, SESSION_MAX_AGE_SECONDS } from '@/lib/auth';
 
 const bs58 = (bs58Import as any).default || bs58Import;
 
@@ -73,11 +73,11 @@ export async function POST(req: Request) {
     // Provision or fetch user account in Supabase
     const profile = await getOrCreatePlayer(walletAddress, chainType);
 
-    // Issue signed session token (24 hour validity)
+    // Issue signed permanent session token (365 days validity)
     const sessionData = {
       wallet: walletAddress,
       chain: chainType,
-      exp: Date.now() + 24 * 60 * 60 * 1000,
+      exp: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
     };
     const sessionToken = signSession(sessionData);
 
@@ -92,12 +92,12 @@ export async function POST(req: Request) {
       },
     });
 
-    // Set secure HTTP-only session cookie
+    // Set secure HTTP-only persistent session cookie (365 days / 1 Year)
     res.cookies.set('cypher_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 86400, // 24 hours
+      maxAge: SESSION_MAX_AGE_SECONDS,
       path: '/',
     });
 

@@ -10,6 +10,7 @@ interface SecurityModalProps {
   clientSeed: string;
   nonce: number;
   onRotateSeeds: (newClientSeed: string) => void;
+  onOpenFairness?: () => void;
 }
 
 export default function SecurityModal({
@@ -19,6 +20,7 @@ export default function SecurityModal({
   clientSeed,
   nonce,
   onRotateSeeds,
+  onOpenFairness,
 }: SecurityModalProps) {
   const [newClientSeed, setNewClientSeed] = useState(clientSeed);
   const [rotated, setRotated] = useState(false);
@@ -107,6 +109,19 @@ export default function SecurityModal({
           <RefreshCw className="w-4 h-4" />
           {rotated ? "Seed Pair Rotated Successfully!" : "Rotate Seed Pair (Commit-Reveal)"}
         </button>
+
+        {onOpenFairness && (
+          <button
+            onClick={() => {
+              onClose();
+              onOpenFairness();
+            }}
+            className="w-full mt-2.5 py-2.5 bg-slate-950 hover:bg-emerald-950/40 border border-slate-800 hover:border-emerald-500/40 text-emerald-400 font-mono text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Launch 1-Click Provably Fair Verifier</span>
+          </button>
+        )}
       </div>
     </div>
   );

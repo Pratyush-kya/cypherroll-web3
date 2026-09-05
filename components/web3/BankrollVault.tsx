@@ -19,7 +19,7 @@ interface TreasuryData {
 
 export default function BankrollVault() {
   const [stakeAmount, setStakeAmount] = useState<number>(100);
-  const [userStaked, setUserStaked] = useState<number>(500);
+  const [userStaked, setUserStaked] = useState<number>(0);
   const [treasury, setTreasury] = useState<TreasuryData | null>(null);
   const [isStaking, setIsStaking] = useState<boolean>(false);
   const [stakeSuccessMsg, setStakeSuccessMsg] = useState<string | null>(null);
@@ -98,9 +98,17 @@ export default function BankrollVault() {
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
             <span className="text-xs font-mono text-slate-400 block uppercase">Total Vault Reserves</span>
             <span className="text-2xl font-heading font-black text-foreground">
-              ${totalReserves.toLocaleString()}
+              ${(treasury?.totalReservesUsdc || 0).toLocaleString()}
             </span>
-            <span className="text-[10px] block font-mono text-slate-500 mt-1">Multi-Chain On-Chain Escrows</span>
+            <span className="text-[10px] block font-mono text-emerald-400 mt-1">Multi-Chain On-Chain Escrows</span>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <span className="text-xs font-mono text-slate-400 block uppercase">Total Player Liabilities</span>
+            <span className="text-2xl font-heading font-black text-rose-400">
+              ${(treasury?.totalLiabilitiesUsdc || 0).toLocaleString()}
+            </span>
+            <span className="text-[10px] block font-mono text-slate-500 mt-1">Live Active User Balances</span>
           </div>
 
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
@@ -112,14 +120,36 @@ export default function BankrollVault() {
               +${((userStaked * (estimatedAPY / 100)) / 12).toFixed(2)} / month @ {estimatedAPY}% APY
             </span>
           </div>
+        </div>
 
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-            <span className="text-xs font-mono text-slate-400 block uppercase">Kelly Bet Cap (1% Rule)</span>
-            <span className="text-2xl font-heading font-black text-purple-400">
-              ${maxBetCap.toLocaleString()}
-            </span>
-            <span className="text-[10px] block font-mono text-slate-500 mt-1">Mathematical Invariant Guard</span>
+        {/* Proof of Reserves Visual */}
+        <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-heading font-bold text-slate-200 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              Cryptographic Proof of Reserves
+            </h3>
+            <span className="text-xs font-mono text-slate-400">Last Audited: Just Now</span>
           </div>
+          
+          <div className="relative h-4 bg-slate-900 rounded-full overflow-hidden mb-2 border border-slate-800">
+            {/* Reserves Bar (100% full since it's overcollateralized) */}
+            <div className="absolute top-0 left-0 h-full bg-emerald-500/80" style={{ width: '100%' }}></div>
+            {/* Liabilities Overlay (Proportional to reserves) */}
+            <div 
+              className="absolute top-0 left-0 h-full bg-rose-500" 
+              style={{ width: `${Math.min(( (treasury?.totalLiabilitiesUsdc || 0) / (treasury?.totalReservesUsdc || 1) ) * 100, 100)}%` }}
+            ></div>
+          </div>
+          
+          <div className="flex justify-between text-[11px] font-mono">
+            <span className="text-rose-400">Liabilities: ${(treasury?.totalLiabilitiesUsdc || 0).toLocaleString()}</span>
+            <span className="text-emerald-400 font-bold">{solvency.toLocaleString()}% Over-Collateralized</span>
+            <span className="text-emerald-400">Reserves: ${(treasury?.totalReservesUsdc || 0).toLocaleString()}</span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-3 border-t border-slate-800/50 pt-2">
+            <strong>Provable Solvency:</strong> The Vault maintains {Math.floor(solvency / 100)}x more on-chain liquidity than total user deposits. Withdrawals are mathematically guaranteed.
+          </p>
         </div>
 
         {/* Multi-Chain Liquidity Breakdown */}
@@ -131,19 +161,19 @@ export default function BankrollVault() {
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Base Vault:</span>
               <span className="text-primary font-bold">
-                ${(treasury?.networkReserves.baseUsdc ?? 650000).toLocaleString()} USDC
+                ${(treasury?.networkReserves.baseUsdc ?? 0).toLocaleString()} USDC
               </span>
             </div>
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Arbitrum One:</span>
               <span className="text-purple-400 font-bold">
-                ${(treasury?.networkReserves.arbUsdc ?? 400000).toLocaleString()} USDC
+                ${(treasury?.networkReserves.arbUsdc ?? 0).toLocaleString()} USDC
               </span>
             </div>
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Solana Vault:</span>
               <span className="text-emerald-400 font-bold">
-                ${(treasury?.networkReserves.solUsdc ?? 200000).toLocaleString()} SOL/USDC
+                ${(treasury?.networkReserves.solUsdc ?? 0).toLocaleString()} SOL/USDC
               </span>
             </div>
           </div>

@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
-import { getOrCreatePlayer, recordAtomicBet, broadcastLiveBet } from '@/lib/supabase';
+import crypto from 'crypto';
+import { getOrCreatePlayer, recordAtomicBet, broadcastLiveBet, calculateDeterministicRakeback } from '@/lib/supabase';
 import { calculateDiceRoll, getDiceMultiplier } from '@/lib/provably-fair';
 import { verifySession } from '@/lib/auth';
+import { adminControlsState } from '@/lib/admin-controls-state';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Maintenance Circuit Breaker Guard
+    if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('DICE')) {
+      return NextResponse.json({
+        error: 'Dice wagering is currently paused by the operator for maintenance.',
+      }, { status: 503 });
+    }
+
     const body = await req.json();
-    const { walletAddress, target, wager, clientSeed } = body;
+    const { walletAddress, target, wager, clientSeed, isDemo } = body;
 
     if (!target || !wager) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -18,16 +27,48 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid bet parameters' }, { status: 400 });
     }
 
-    // Security Check: Verify Cryptographic Session Cookie
+    // Handle Demo Mode (Safe Provably-Fair Simulation without DB balance impact)
+    if (isDemo) {
+      const demoServerSeed = crypto.randomBytes(32).toString('hex');
+      const demoServerSeedHash = crypto.createHash('sha256').update(demoServerSeed).digest('hex');
+      const currentClientSeed = clientSeed || 'demo_player_seed';
+      const currentNonce = Math.floor(Math.random() * 10000) + 1;
+
+      const roll = calculateDiceRoll(demoServerSeed, currentClientSeed, currentNonce);
+      const won = roll < target;
+      const multiplier = getDiceMultiplier(target);
+      const profit = won
+        ? parseFloat(((wager * multiplier) - wager).toFixed(2))
+        : -wager;
+
+      return NextResponse.json({
+        success: true,
+        isDemo: true,
+        roll,
+        won,
+        multiplier,
+        profit,
+        serverSeedHash: demoServerSeedHash,
+        serverSeed: demoServerSeed,
+        newNonce: currentNonce + 1,
+      });
+    }
+
+    // Security Check: Verify Cryptographic Session Cookie for Real Mode
     const cookieHeader = req.headers.get('cookie') || '';
     const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/);
     const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
 
-    // Use verified wallet from cryptographically signed session, or fallback to provided address for guest play
-    const effectiveWallet = session?.wallet || walletAddress || 'Anon_Guest';
+    if (!session || !session.wallet) {
+      return NextResponse.json({
+        error: 'Authentication required for Real Mode. Please connect your Web3 wallet or switch to Demo Mode.',
+      }, { status: 401 });
+    }
+
+    const effectiveWallet = session.wallet;
 
     // If caller specified a wallet that differs from session cookie, reject spoofing attempt
-    if (session?.wallet && walletAddress && session.wallet !== walletAddress) {
+    if (walletAddress && session.wallet !== walletAddress) {
       return NextResponse.json({ error: 'Session wallet mismatch: spoofing attempt rejected' }, { status: 403 });
     }
 
@@ -52,9 +93,8 @@ export async function POST(req: Request) {
       : -wager;
     const payout = won ? parseFloat((wager * multiplier).toFixed(2)) : 0.0;
 
-    // 3. Calculate 15% VIP Rakeback on theoretical house edge (1% on Dice)
-    const theoreticalEdge = wager * 0.01;
-    const rakebackEarned = parseFloat((theoreticalEdge * 0.15).toFixed(4));
+    // 3. Calculate VIP Rakeback on theoretical house edge (1% on Dice)
+    const rakebackEarned = calculateDeterministicRakeback(wager, 0.01, profile.vip_tier);
 
     // 4. Atomic Database Transaction
     const updatedState = await recordAtomicBet({

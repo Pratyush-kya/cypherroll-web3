@@ -28,11 +28,7 @@ export interface MockProfile {
 const mockDb = {
   profiles: new Map<string, MockProfile>(),
   bets: [] as any[],
-  trollbox: [
-    { id: '1', sender_address: '0x4a...e1', sender_vip: 'Gold', message: 'Just hit 14.8x on Crash! 🚀', created_at: new Date(Date.now() - 120000).toISOString() },
-    { id: '2', sender_address: '7XwZ...9q', sender_vip: 'Platinum', message: 'CypherRoll 3D runs crazy fast on Tor.', created_at: new Date(Date.now() - 60000).toISOString() },
-    { id: '3', sender_address: '0x99...f4', sender_vip: 'Bronze', message: 'Provably fair hashes check out 100%.', created_at: new Date(Date.now() - 15000).toISOString() },
-  ],
+  trollbox: [] as any[],
 };
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
@@ -55,20 +51,36 @@ export const supabaseAdmin: SupabaseClient | null = isSupabaseConfigured
     })
   : null;
 
-function computeVIPTier(totalWagered: number): string {
-  if (totalWagered >= 50000) return 'Diamond';
-  if (totalWagered >= 10000) return 'Platinum';
-  if (totalWagered >= 2500) return 'Gold';
-  if (totalWagered >= 500) return 'Silver';
+export function computeVIPTier(wagered: number): string {
+  if (wagered >= 50000) return 'Diamond';
+  if (wagered >= 10000) return 'Platinum';
+  if (wagered >= 2500) return 'Gold';
+  if (wagered >= 500) return 'Silver';
   return 'Bronze';
+}
+
+export function getVIPRakebackRate(vipTier: string): number {
+  const tier = (vipTier || 'Bronze').toLowerCase();
+  if (tier === 'diamond') return 0.25; // 25%
+  if (tier === 'platinum') return 0.20; // 20%
+  if (tier === 'gold') return 0.15; // 15%
+  if (tier === 'silver') return 0.125; // 12.5%
+  return 0.10; // 10%
+}
+
+export function calculateDeterministicRakeback(wager: number, houseEdgeMultiplier: number, vipTier: string): number {
+  const theoreticalEdge = wager * houseEdgeMultiplier;
+  const rate = getVIPRakebackRate(vipTier);
+  return parseFloat((theoreticalEdge * rate).toFixed(4));
 }
 
 /**
  * Retrieves player profile or auto-provisions a new account
  */
 export async function getOrCreatePlayer(walletAddress: string, chainType: string = 'SOL'): Promise<MockProfile> {
-  if (supabase) {
-    const { data: existing } = await supabase
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data: existing } = await client
       .from('profiles')
       .select('*')
       .eq('wallet_address', walletAddress)
@@ -82,7 +94,7 @@ export async function getOrCreatePlayer(walletAddress: string, chainType: string
     const newProfile = {
       wallet_address: walletAddress,
       chain_type: chainType,
-      balance_usdc: 1000.0,
+      balance_usdc: 0.0,
       total_wagered: 0.0,
       total_won: 0.0,
       vip_tier: 'Bronze',
@@ -93,7 +105,7 @@ export async function getOrCreatePlayer(walletAddress: string, chainType: string
       nonce: 1,
     };
 
-    const { data: created } = await supabase
+    const { data: created } = await client
       .from('profiles')
       .insert(newProfile)
       .select('*')
@@ -111,7 +123,7 @@ export async function getOrCreatePlayer(walletAddress: string, chainType: string
       id: Math.random().toString(36).substring(7),
       wallet_address: walletAddress,
       chain_type: chainType,
-      balance_usdc: 1000.0,
+      balance_usdc: 0.0,
       total_wagered: 0.0,
       total_won: 0.0,
       vip_tier: 'Bronze',
@@ -143,8 +155,9 @@ export async function recordAtomicBet(params: {
   nonce: number;
   rakebackEarned: number;
 }) {
-  if (supabase) {
-    const { data, error } = await supabase.rpc('execute_atomic_bet', {
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data, error } = await client.rpc('execute_atomic_bet', {
       p_wallet: params.wallet,
       p_game_type: params.gameType,
       p_wager: params.wager,
@@ -201,6 +214,19 @@ export async function recordAtomicBet(params: {
 export async function lockPlayerWager(wallet: string, wager: number): Promise<{ success: boolean; newBalance?: number; error?: string }> {
   const client = supabaseAdmin || supabase;
   if (client) {
+    // 1. Try atomic stored procedure with row-level lock (FOR UPDATE)
+    try {
+      const { data, error } = await client.rpc('execute_crash_wager', {
+        p_wallet: wallet,
+        p_wager: wager,
+      });
+      if (!error && data && data.success) {
+        return { success: true, newBalance: Number(data.new_balance) };
+      }
+    } catch {
+      // Fallback if RPC migration not yet applied
+    }
+
     const profile = await getOrCreatePlayer(wallet);
     if (Number(profile.balance_usdc) < wager) {
       return { success: false, error: 'Insufficient balance' };
@@ -272,6 +298,30 @@ export async function settleCrashCashout(params: {
 }): Promise<{ newBalance: number; vipTier: string; rakeback: number }> {
   const client = supabaseAdmin || supabase;
   if (client) {
+    // 1. Try atomic stored procedure with row-level lock (FOR UPDATE)
+    try {
+      const { data, error } = await client.rpc('execute_crash_cashout', {
+        p_wallet: params.wallet,
+        p_wager: params.wager,
+        p_multiplier: params.multiplier,
+        p_payout: params.payout,
+        p_profit: params.profit,
+        p_server_seed_hash: params.serverSeedHash,
+        p_client_seed: params.clientSeed,
+        p_nonce: params.nonce,
+        p_rakeback_earned: params.rakebackEarned,
+      });
+      if (!error && data && data.new_balance !== undefined) {
+        return {
+          newBalance: Number(data.new_balance),
+          vipTier: String(data.vip_tier || 'Bronze'),
+          rakeback: Number(data.rakeback || 0),
+        };
+      }
+    } catch {
+      // Fallback if RPC migration not yet applied
+    }
+
     const { data: profile } = await client
       .from('profiles')
       .select('*')
@@ -374,7 +424,10 @@ export async function settleCrashBust(params: {
     // Note: balance was already locked/deducted during lockPlayerWager
     const newWagered = parseFloat((Number(profile.total_wagered) + params.wager).toFixed(2));
     const newTier = computeVIPTier(newWagered);
-    const newRakeback = parseFloat((Number(profile.accumulated_rakeback) + params.rakebackEarned).toFixed(4));
+    
+    // Calculate 2% House Edge Rakeback dynamically based on current tier
+    const actualRakebackEarned = calculateDeterministicRakeback(params.wager, 0.02, profile.vip_tier);
+    const newRakeback = parseFloat((Number(profile.accumulated_rakeback) + actualRakebackEarned).toFixed(4));
     const newNonce = profile.nonce + 1;
 
     await client
@@ -527,45 +580,7 @@ export async function getRecentBets(limit: number = 15) {
       .limit(limit);
     if (data && data.length > 0) return data;
   }
-  return [
-    {
-      id: 'mock_1',
-      wallet_address: '0x4a71b48f...e1',
-      game_type: 'DICE',
-      wager: 30,
-      target_payout: 4.95,
-      outcome: 18.2,
-      won: true,
-      payout: 148.50,
-      profit: 118.50,
-      created_at: new Date(Date.now() - 120000).toISOString(),
-    },
-    {
-      id: 'mock_2',
-      wallet_address: '7XwZQm48...9q',
-      game_type: 'CRASH',
-      wager: 50,
-      target_payout: 8.24,
-      outcome: 8.24,
-      won: true,
-      payout: 412.00,
-      profit: 362.00,
-      created_at: new Date(Date.now() - 60000).toISOString(),
-    },
-    {
-      id: 'mock_3',
-      wallet_address: '0x99aBcD1...f4',
-      game_type: 'DICE',
-      wager: 20,
-      target_payout: 1.98,
-      outcome: 41.5,
-      won: true,
-      payout: 39.60,
-      profit: 19.60,
-      created_at: new Date(Date.now() - 15000).toISOString(),
-    },
-    ...mockDb.bets.slice(0, limit),
-  ];
+  return mockDb.bets.slice(0, limit);
 }
 
 /**
@@ -576,6 +591,7 @@ export async function executeWithdrawal(params: {
   amount: number;
   chainType: string;
   txHash?: string;
+  status?: string;
 }): Promise<{ success: boolean; newBalance?: number; nonce?: number; error?: string }> {
   const client = supabaseAdmin || supabase;
   if (client) {
@@ -610,7 +626,7 @@ export async function executeWithdrawal(params: {
       amount: params.amount,
       currency: 'USDC',
       tx_hash: params.txHash || 'EIP712_PENDING',
-      status: 'CONFIRMED',
+      status: params.status || 'CONFIRMED',
     });
 
     return {
@@ -674,5 +690,152 @@ export async function executeDeposit(params: {
   const profile = await getOrCreatePlayer(params.wallet);
   profile.balance_usdc = parseFloat((profile.balance_usdc + params.amount).toFixed(2));
   return { success: true, newBalance: profile.balance_usdc };
+}
+
+/**
+ * Rotates player seeds: reveals past server seed and creates new seed pair
+ */
+export async function rotatePlayerSeeds(wallet: string, newClientSeed: string) {
+  const { serverSeed: newServerSeed, serverSeedHash: newServerSeedHash } = generateServerSeed();
+
+  const client = supabaseAdmin || supabase;
+  if (client) {
+    const { data: current } = await client
+      .from('profiles')
+      .select('active_server_seed, active_server_seed_hash')
+      .eq('wallet_address', wallet)
+      .single();
+
+    const previousServerSeed = current?.active_server_seed || '';
+
+    await client
+      .from('profiles')
+      .update({
+        active_server_seed: newServerSeed,
+        active_server_seed_hash: newServerSeedHash,
+        client_seed: newClientSeed,
+        nonce: 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('wallet_address', wallet);
+
+    return {
+      previousServerSeed,
+      newServerSeedHash,
+      clientSeed: newClientSeed,
+      nonce: 1,
+    };
+  }
+
+  const profile = mockDb.profiles.get(wallet);
+  const previousServerSeed = profile ? profile.active_server_seed : '';
+  if (profile) {
+    profile.active_server_seed = newServerSeed;
+    profile.active_server_seed_hash = newServerSeedHash;
+    profile.client_seed = newClientSeed;
+    profile.nonce = 1;
+  }
+
+  return {
+    previousServerSeed,
+    newServerSeedHash,
+    clientSeed: newClientSeed,
+    nonce: 1,
+  };
+}
+
+/**
+ * Record liquidity provider bankroll stake
+ */
+export async function recordBankrollStake(params: {
+  wallet: string;
+  amount: number;
+  poolShares?: number;
+  apy?: number;
+}) {
+  const client = supabaseAdmin || supabase;
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from('bankroll_stakes').insert({
+      wallet_address: params.wallet,
+      amount_usdc: params.amount,
+      pool_shares: params.poolShares || params.amount,
+      estimated_apy: params.apy || 19.4,
+      status: 'ACTIVE',
+    }).select().single();
+    if (error) {
+      console.warn('Could not record bankroll stake to Supabase:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('recordBankrollStake exception:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Record immutable crash round outcome
+ */
+export async function recordCrashRound(params: {
+  roundId: string;
+  crashPoint: number;
+  serverSeedHash: string;
+  serverSeed?: string;
+  clientSeed?: string;
+  nonce?: number;
+}) {
+  const client = supabaseAdmin || supabase;
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from('crash_rounds').insert({
+      round_id: params.roundId,
+      crash_point: params.crashPoint,
+      server_seed_hash: params.serverSeedHash,
+      server_seed: params.serverSeed || null,
+      client_seed: params.clientSeed || 'cypher_public_beacon',
+      nonce: params.nonce || 1,
+      status: 'CRASHED',
+    }).select().single();
+    if (error) {
+      console.warn('Could not record crash round to Supabase:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('recordCrashRound exception:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Record quarantined address in AML audit trail
+ */
+export async function recordSanctionsQuarantine(params: {
+  txHash: string;
+  wallet: string;
+  amount: number;
+  reason: string;
+  riskScore?: number;
+}) {
+  const client = supabaseAdmin || supabase;
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from('aml_sanctions_quarantine').insert({
+      tx_hash: params.txHash,
+      wallet_address: params.wallet,
+      amount: params.amount,
+      reason: params.reason,
+      risk_score: params.riskScore || 100,
+    }).select().single();
+    if (error) {
+      console.warn('Could not record aml quarantine to Supabase:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('recordSanctionsQuarantine exception:', err.message);
+    return null;
+  }
 }
 

@@ -16,9 +16,9 @@ export async function POST(req: Request) {
     const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/);
     const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
 
-    const effectiveWallet = session?.wallet || walletAddress;
+    const effectiveWallet = session?.wallet;
     if (!effectiveWallet) {
-      return NextResponse.json({ error: 'Authentication required for withdrawals' }, { status: 401 });
+      return NextResponse.json({ error: 'Authentication required: please connect and sign in with your Web3 wallet before withdrawing.' }, { status: 401 });
     }
 
     // 2. Financial Safety & Kelly Criterion Limits
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
+    const requiresMultisig = numAmount > WITHDRAWAL_LIMITS.AUTO_INSTANT_LIMIT_USDC;
     const targetNetwork = (network || 'BASE').toUpperCase() as 'BASE' | 'ARB' | 'SOL';
 
     // 3. Atomic Database Deduction
@@ -43,11 +44,23 @@ export async function POST(req: Request) {
       wallet: effectiveWallet,
       amount: numAmount,
       chainType: targetNetwork,
-      txHash,
+      txHash: requiresMultisig ? 'PENDING_MULTISIG' : txHash,
+      status: requiresMultisig ? 'PENDING_MULTISIG' : 'CONFIRMED',
     });
 
     if (!withdrawalResult.success) {
       return NextResponse.json({ error: withdrawalResult.error || 'Withdrawal failed' }, { status: 400 });
+    }
+
+    if (requiresMultisig) {
+      return NextResponse.json({
+        success: true,
+        isPendingMultisig: true,
+        amount: numAmount,
+        newBalance: withdrawalResult.newBalance,
+        network: targetNetwork,
+        message: `Amount exceeds $${WITHDRAWAL_LIMITS.AUTO_INSTANT_LIMIT_USDC.toLocaleString()} instant threshold. Slated for transparent multi-sig audit (est. 4 hours).`
+      });
     }
 
     // 4. Generate Cryptographic Operator Authorization

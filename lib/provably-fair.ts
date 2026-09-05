@@ -105,3 +105,86 @@ export function verifyGameOutcome(
 
   return { outcome, calculatedServerSeedHash };
 }
+
+export interface DetailedProof {
+  serverSeed: string;
+  serverSeedHash: string;
+  clientSeed: string;
+  nonce: number;
+  gameType: 'DICE' | 'CRASH';
+  hmacHex: string;
+  subHash: string;
+  decimalValue: number;
+  outcome: number;
+  formulaDescription: string;
+  stepByStep: {
+    message: string;
+    hmacInput: string;
+    calculation: string;
+    result: string;
+  };
+}
+
+/**
+ * Returns detailed mathematical step-by-step cryptographic proof
+ */
+export function getDetailedGameProof(
+  serverSeed: string,
+  clientSeed: string,
+  nonce: number,
+  gameType: 'DICE' | 'CRASH'
+): DetailedProof {
+  const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+  const hmacHex = computeHMAC(serverSeed, clientSeed, nonce);
+
+  if (gameType === 'DICE') {
+    const subHash = hmacHex.substring(0, 8);
+    const intVal = parseInt(subHash, 16);
+    const roll = parseFloat(((intVal % 10000) / 100).toFixed(2));
+
+    return {
+      serverSeed,
+      serverSeedHash,
+      clientSeed,
+      nonce,
+      gameType,
+      hmacHex,
+      subHash,
+      decimalValue: intVal,
+      outcome: roll,
+      formulaDescription: `HMAC first 8 hex chars (0x${subHash}) = ${intVal} -> (${intVal} % 10000) / 100 = ${roll}`,
+      stepByStep: {
+        message: `${clientSeed}:${nonce}`,
+        hmacInput: `HMAC_SHA256(key = "${serverSeed}", message = "${clientSeed}:${nonce}")`,
+        calculation: `parseInt("${subHash}", 16) % 10000 / 100 = ${intVal} % 10000 / 100`,
+        result: `${roll.toFixed(2)} (Roll between 0.00 - 99.99)`,
+      },
+    };
+  } else {
+    const subHash = hmacHex.substring(0, 13);
+    const h = parseInt(subHash, 16);
+    const e = Math.pow(2, 52);
+    const rawCrash = (0.98 * e) / (e - h);
+    const crashPoint = rawCrash < 1.00 ? 1.00 : parseFloat((Math.floor(rawCrash * 100) / 100).toFixed(2));
+
+    return {
+      serverSeed,
+      serverSeedHash,
+      clientSeed,
+      nonce,
+      gameType,
+      hmacHex,
+      subHash,
+      decimalValue: h,
+      outcome: crashPoint,
+      formulaDescription: `HMAC first 13 hex chars (0x${subHash}) = ${h} -> floor((0.98 * 2^52) / (2^52 - ${h}) * 100) / 100 = ${crashPoint}x`,
+      stepByStep: {
+        message: `${clientSeed}:${nonce}`,
+        hmacInput: `HMAC_SHA256(key = "${serverSeed}", message = "${clientSeed}:${nonce}")`,
+        calculation: `(0.98 * 2^52) / (2^52 - ${h}) with 2% instant crash threshold`,
+        result: `${crashPoint.toFixed(2)}x Multiplier`,
+      },
+    };
+  }
+}
+

@@ -17,7 +17,22 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
   const mountRef = useRef<HTMLDivElement>(null);
   const [hasWebGL, setHasWebGL] = useState(true);
   const [modelSource, setModelSource] = useState<'blender' | 'procedural'>('procedural');
-  const [dicePhase, setDicePhase] = useState<'IDLE' | 'KINETIC_TUMBLE' | 'JACKPOT_VICTORY' | 'RAID_OVERLOAD'>('IDLE');
+
+  // Deterministic dice phase without setState in requestAnimationFrame
+  const dicePhase: 'IDLE' | 'KINETIC_TUMBLE' | 'JACKPOT_VICTORY' | 'RAID_OVERLOAD' =
+    isRolling
+      ? 'KINETIC_TUMBLE'
+      : lastWon === true
+      ? 'JACKPOT_VICTORY'
+      : lastWon === false
+      ? 'RAID_OVERLOAD'
+      : 'IDLE';
+
+  // Synchronize mutable refs for 60fps animation loop to prevent WebGL teardown
+  const propsRef = useRef({ isRolling, targetRoll, lastRoll, lastWon });
+  useEffect(() => {
+    propsRef.current = { isRolling, targetRoll, lastRoll, lastWon };
+  }, [isRolling, targetRoll, lastRoll, lastWon]);
 
   useEffect(() => {
     const currentMount = mountRef.current;
@@ -169,14 +184,46 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
 
       // Load Master Blender GLB Model
       const attachBlenderModel = (clonedScene: THREE.Group) => {
-        clonedScene.scale.set(0.95, 0.95, 0.95);
+        // Scale adjustment for web
+        clonedScene.scale.set(1.1, 1.1, 1.1);
+        
+        // Generate native WebGL materials to bypass HTML rendering issues
+        const diceMaterial = new THREE.MeshPhysicalMaterial({
+          color: 0xcc0011, // Solid rich casino red
+          metalness: 0.15,
+          roughness: 0.15, // Glossy plastic/resin look
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.2,
+          sheen: 1.0,
+          sheenColor: new THREE.Color(0xffd700), // Light gold glaze
+        });
+        
+        const pipMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffffff, // Pure white
+          emissive: 0xffffff,
+          emissiveIntensity: 0.8, // Bright contrast
+          roughness: 0.2
+        });
+
         clonedScene.traverse((child) => {
           if ((child as THREE.Mesh).isMesh) {
             const m = child as THREE.Mesh;
             m.castShadow = true;
             m.receiveShadow = true;
+            // Apply materials based on Blender explicitly named meshes
+            if (m.name.includes("Dice")) {
+                m.material = diceMaterial;
+            } else if (m.name.includes("Pip")) {
+                m.material = pipMaterial; // Pips/dots
+            }
           }
         });
+        
+        // Mathematically center the imported model to fix any rotation axis wobbling
+        const box = new THREE.Box3().setFromObject(clonedScene);
+        const center = box.getCenter(new THREE.Vector3());
+        clonedScene.position.sub(center);
+
         diceGroup.remove(proceduralGroup);
         diceGroup.add(clonedScene);
         setModelSource('blender');
@@ -187,7 +234,7 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       } else {
         const loader = new GLTFLoader();
         loader.load(
-          '/assets/3d/dice.glb',
+          '/assets/3d/dice.glb?v=' + Date.now(),
           (gltf) => {
             cachedDiceGltf = gltf.scene;
             attachBlenderModel(gltf.scene.clone());
@@ -202,56 +249,61 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       diceGroup.rotation.z = 0.15;
 
       let waveScale = 0.1;
+      
+      // Momentum variables for smooth transition
+      let velocityX = 0.006;
+      let velocityY = 0.009;
+      let velocityZ = 0.004;
 
       const animate = () => {
         animationId = requestAnimationFrame(animate);
 
-        // PHASE: KINETIC TUMBLE (isRolling)
-        if (isRolling) {
-          setDicePhase('KINETIC_TUMBLE');
-          diceGroup.rotation.x += 0.28;
-          diceGroup.rotation.y += 0.35;
-          diceGroup.rotation.z += 0.22;
+        const { isRolling: curRolling, lastWon: curWon } = propsRef.current;
+
+        // Determine target velocities based on mathematical game state
+        let targetVx, targetVy, targetVz;
+
+        if (curRolling) {
+          targetVx = 0.35;
+          targetVy = 0.42;
+          targetVz = 0.25;
 
           edgeMat.color.setHex(0xffb800);
           statusLight.color.setHex(0xffb800);
           shockwaveMat.opacity = 0;
           waveScale = 0.1;
         } else {
-          // PHASE: OUTCOME (WON or LOST or IDLE)
-          if (lastWon === true) {
-            setDicePhase('JACKPOT_VICTORY');
+          // Idle or Outcome states
+          targetVx = curWon === true ? 0.003 : curWon === false ? 0.004 : 0.006;
+          targetVy = curWon === true ? 0.004 : curWon === false ? 0.005 : 0.009;
+          targetVz = curWon === true ? 0.001 : curWon === false ? 0.001 : 0.004;
+
+          if (curWon === true) {
             edgeMat.color.setHex(0x10b981);
             statusLight.color.setHex(0x10b981);
 
-            // Expand victory energy wave
             waveScale += 0.08;
             shockwave.scale.set(waveScale, waveScale, waveScale);
             shockwaveMat.opacity = Math.max(0, 1.0 - waveScale / 4.0);
-
-            // Settle onto face with gentle celebration pulse
-            diceGroup.rotation.x += 0.003;
-            diceGroup.rotation.y += 0.004;
-          } else if (lastWon === false) {
-            setDicePhase('RAID_OVERLOAD');
+          } else if (curWon === false) {
             edgeMat.color.setHex(0xef4444);
             statusLight.color.setHex(0xef4444);
             shockwaveMat.opacity = 0;
-
-            diceGroup.rotation.x += 0.004;
-            diceGroup.rotation.y += 0.005;
           } else {
-            setDicePhase('IDLE');
             edgeMat.color.setHex(0x00f0ff);
             statusLight.color.setHex(0x00f0ff);
             shockwaveMat.opacity = 0;
-
-            // Idle floating harmonic rotation
-            diceGroup.rotation.x += 0.006;
-            diceGroup.rotation.y += 0.009;
-            diceGroup.rotation.z += 0.004;
           }
         }
+
+        // Smooth linear interpolation (lerp) for natural physics transition
+        velocityX += (targetVx - velocityX) * 0.05;
+        velocityY += (targetVy - velocityY) * 0.05;
+        velocityZ += (targetVz - velocityZ) * 0.05;
+
+        diceGroup.rotation.x += velocityX;
+        diceGroup.rotation.y += velocityY;
+        diceGroup.rotation.z += velocityZ;
 
         if (renderer) {
           renderer.render(scene, camera);
@@ -284,7 +336,7 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       }
       if (renderer) renderer.dispose();
     };
-  }, [isRolling, lastWon]);
+  }, []);
 
   // Tor Safe 2D Fallback
   if (!hasWebGL) {
@@ -323,20 +375,6 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
   return (
     <div className="relative w-full h-full min-h-[260px]">
       <div ref={mountRef} className="w-full h-full" />
-      <div className="absolute bottom-2 left-3 text-[10px] font-mono uppercase tracking-wider bg-slate-950/90 px-2.5 py-1 rounded border border-slate-700/60 flex items-center gap-2 shadow-lg backdrop-blur-md">
-        <span className={`w-2 h-2 rounded-full ${
-          dicePhase === 'IDLE' ? 'bg-cyan-400' :
-          dicePhase === 'KINETIC_TUMBLE' ? 'bg-amber-400 animate-spin' :
-          dicePhase === 'JACKPOT_VICTORY' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'
-        }`} />
-        <span className="text-slate-300 font-bold">
-          Phase: {dicePhase.replace('_', ' ')}
-        </span>
-        <span className="text-slate-500">•</span>
-        <span className="text-amber-400/90 font-mono">
-          {modelSource === 'blender' ? 'Blender 4.3 PBR' : 'Procedural PBR'}
-        </span>
-      </div>
     </div>
   );
 }

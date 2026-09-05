@@ -87,10 +87,19 @@ export async function verifyOnChainDeposit(params: {
         }
       }
     } catch {
-      // If RPC is unreachable or tx is in local dev simulation
+      // RPC check failed or unconfirmed tx
     }
 
-    // Dev sandbox fallback for simulated deposits
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        verified: false,
+        amountUsdc: 0,
+        txHash: params.txHash,
+        error: 'On-chain transaction receipt could not be verified on the network RPC. Ensure your transaction is confirmed on Base / Arbitrum.',
+      };
+    }
+
+    // Dev sandbox fallback for local simulation only
     const amount = params.amountFallback && params.amountFallback > 0 ? params.amountFallback : 50.0;
     return {
       verified: true,
@@ -100,6 +109,33 @@ export async function verifyOnChainDeposit(params: {
   }
 
   // 3. Solana Verification
+  if (params.network === 'SOL') {
+    try {
+      const { Connection } = await import('@solana/web3.js');
+      const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+      const status = await connection.getSignatureStatus(params.txHash);
+      if (status.value && (status.value.confirmationStatus === 'confirmed' || status.value.confirmationStatus === 'finalized')) {
+        const amount = params.amountFallback && params.amountFallback > 0 ? params.amountFallback : 50.0;
+        return {
+          verified: true,
+          amountUsdc: amount,
+          txHash: params.txHash,
+        };
+      }
+    } catch {
+      // RPC failure or network timeout
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        verified: false,
+        amountUsdc: 0,
+        txHash: params.txHash,
+        error: 'Solana transaction signature could not be verified on Solana mainnet.',
+      };
+    }
+  }
+
   const amount = params.amountFallback && params.amountFallback > 0 ? params.amountFallback : 50.0;
   return {
     verified: true,

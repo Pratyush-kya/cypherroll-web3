@@ -28,6 +28,7 @@ export const NETWORK_CONFIG = {
 
 export const WITHDRAWAL_LIMITS = {
   MIN_AMOUNT_USDC: 10.0,
+  AUTO_INSTANT_LIMIT_USDC: 2500.0,
   MAX_SINGLE_WITHDRAWAL_USDC: 25000.0, // Kelly Criterion hot-vault safety ceiling
 };
 

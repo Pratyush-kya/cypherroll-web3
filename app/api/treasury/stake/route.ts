@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
-import { getOrCreatePlayer, supabaseAdmin, supabase } from '@/lib/supabase';
+import { getOrCreatePlayer, supabaseAdmin, supabase, recordBankrollStake } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +13,9 @@ export async function POST(req: Request) {
     const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/);
     const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
 
-    const effectiveWallet = session?.wallet || walletAddress;
+    const effectiveWallet = session?.wallet;
     if (!effectiveWallet) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      return NextResponse.json({ error: 'Authentication required: please connect and sign in with your Web3 wallet.' }, { status: 401 });
     }
 
     const numAmount = parseFloat(amount);
@@ -39,6 +39,26 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq('wallet_address', effectiveWallet);
+
+      // Record stake in bankroll_stakes
+      await recordBankrollStake({
+        wallet: effectiveWallet,
+        amount: numAmount,
+        poolShares: numAmount,
+        apy: 19.4,
+      });
+
+      // Record in transactions ledger
+      try {
+        await client.from('transactions').insert({
+          player_id: profile.id,
+          wallet_address: effectiveWallet,
+          type: 'STAKE_LP',
+          amount: numAmount,
+          currency: 'USDC',
+          status: 'CONFIRMED',
+        });
+      } catch {}
     } else {
       profile.balance_usdc = newBalance;
     }

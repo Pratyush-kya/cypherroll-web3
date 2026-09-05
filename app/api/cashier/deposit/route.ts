@@ -8,13 +8,24 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { walletAddress, amount, network } = body;
+    const { amount, network } = body;
+
+    // Reject simulated balance credits in production unless explicitly enabled
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SIMULATED_DEPOSITS !== 'true') {
+      return NextResponse.json({
+        error: 'Direct simulated deposits are disabled in production. Send USDC/SOL to the vault escrow address and submit the on-chain transaction hash for automated cryptographic verification.',
+      }, { status: 403 });
+    }
 
     const cookieHeader = req.headers.get('cookie') || '';
     const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/);
     const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
 
-    const effectiveWallet = session?.wallet || walletAddress || 'Anon_Guest';
+    if (!session || !session.wallet) {
+      return NextResponse.json({ error: 'Authentication required: please connect and sign in with your Web3 wallet.' }, { status: 401 });
+    }
+
+    const effectiveWallet = session.wallet;
     const numAmount = parseFloat(amount);
 
     if (!numAmount || isNaN(numAmount) || numAmount <= 0) {

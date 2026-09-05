@@ -13,6 +13,10 @@ interface BetHistoryItem {
   wager: number;
   profit: number;
   won: boolean;
+  serverSeed?: string;
+  serverSeedHash?: string;
+  clientSeed?: string;
+  nonce?: number;
 }
 
 interface DiceGameProps {
@@ -20,9 +24,10 @@ interface DiceGameProps {
   balance: number;
   setBalance: React.Dispatch<React.SetStateAction<number>>;
   onBetPlaced?: (rakeback: number, vip: string) => void;
+  isDemoMode?: boolean;
 }
 
-export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced }: DiceGameProps) {
+export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced, isDemoMode }: DiceGameProps) {
   const [target, setTarget] = useState<number>(50);
   const [wager, setWager] = useState<number>(10);
   const [isRolling, setIsRolling] = useState<boolean>(false);
@@ -33,6 +38,12 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
   const [serverSeedHash, setServerSeedHash] = useState<string>('0304473b50e479dcb7b54818671aa40746a0dabd4b7427c5cf358253e7d7426f');
   const [clientSeed, setClientSeed] = useState<string>('player_lucky_777');
   const [isAuditorOpen, setIsAuditorOpen] = useState<boolean>(false);
+  const [modalSeedParams, setModalSeedParams] = useState<{
+    serverSeed?: string;
+    serverSeedHash?: string;
+    clientSeed?: string;
+    nonce?: number;
+  }>({});
 
   const multiplier = getDiceMultiplier(target);
   const winChance = target;
@@ -50,10 +61,11 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: userWallet || 'Anon_Guest',
+          walletAddress: userWallet || (isDemoMode ? 'Demo_Player' : ''),
           target,
           wager,
           clientSeed,
+          isDemo: Boolean(isDemoMode),
         }),
       });
 
@@ -63,11 +75,15 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
       setTimeout(() => {
         setLastRoll(data.roll);
         setLastWon(data.won);
-        setBalance(data.newBalance);
-        setNonce(data.newNonce);
+        if (isDemoMode) {
+          setBalance((prev) => parseFloat((prev + data.profit).toFixed(2)));
+        } else {
+          setBalance(data.newBalance);
+        }
+        if (data.newNonce) setNonce(data.newNonce);
         if (data.serverSeedHash) setServerSeedHash(data.serverSeedHash);
 
-        if (onBetPlaced) {
+        if (onBetPlaced && !isDemoMode) {
           onBetPlaced(data.rakeback, data.vipTier);
         }
 
@@ -79,6 +95,10 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
             wager,
             profit: data.profit,
             won: data.won,
+            serverSeed: data.serverSeed || '',
+            serverSeedHash: data.serverSeedHash || serverSeedHash,
+            clientSeed,
+            nonce,
           },
           ...prev.slice(0, 7),
         ]);
@@ -87,8 +107,19 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
       }, 500);
     } catch (err: any) {
       alert(err.message || "Failed to execute roll");
+    } finally {
       setIsRolling(false);
     }
+  };
+
+  const openVerifierForRoll = (item: BetHistoryItem) => {
+    setModalSeedParams({
+      serverSeed: item.serverSeed || '',
+      serverSeedHash: item.serverSeedHash || serverSeedHash,
+      clientSeed: item.clientSeed || clientSeed,
+      nonce: item.nonce || (nonce > 1 ? nonce - 1 : 1),
+    });
+    setIsAuditorOpen(true);
   };
 
   return (
@@ -251,27 +282,51 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
               <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
               Resolving On Server...
             </span>
+          ) : isDemoMode ? (
+            <span>DEMO ROLL UNDER {target} (${wager})</span>
           ) : (
-            <span>ROLL DICE UNDER {target}</span>
+            <span>ROLL DICE UNDER {target} (${wager})</span>
           )}
         </button>
 
         {/* Recent Bets Mini Ticker */}
         {history.length > 0 && (
           <div className="mt-5 border-t border-slate-800 pt-3">
-            <span className="text-[10px] font-mono text-slate-500 block mb-2 uppercase">Recent Rolls</span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono text-slate-500 uppercase">Recent Rolls (Click to 1-Click Verify)</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalSeedParams({
+                    serverSeed: '',
+                    serverSeedHash,
+                    clientSeed,
+                    nonce: nonce > 1 ? nonce - 1 : 1,
+                  });
+                  setIsAuditorOpen(true);
+                }}
+                className="text-[10px] font-mono text-emerald-400 hover:underline flex items-center gap-1 font-bold"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Verify Fairness</span>
+              </button>
+            </div>
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {history.map((item) => (
-                <div
+                <button
                   key={item.id}
-                  className={`px-2 py-1 rounded text-[11px] font-mono font-bold flex-shrink-0 border ${
+                  type="button"
+                  onClick={() => openVerifierForRoll(item)}
+                  title={`Click to 1-Click Verify Roll: ${item.roll.toFixed(2)}`}
+                  className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold flex-shrink-0 border transition hover:scale-105 active:scale-95 flex items-center gap-1 ${
                     item.won
-                      ? 'bg-emerald-950/60 border-emerald-600/40 text-emerald-400'
-                      : 'bg-rose-950/60 border-rose-600/40 text-rose-400'
+                      ? 'bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-600/40 text-emerald-400'
+                      : 'bg-rose-950/60 hover:bg-rose-900/60 border-rose-600/40 text-rose-400'
                   }`}
                 >
-                  {item.roll.toFixed(2)}
-                </div>
+                  <span>{item.roll.toFixed(2)}</span>
+                  <ShieldCheck className="w-3 h-3 opacity-60" />
+                </button>
               ))}
             </div>
           </div>
@@ -282,9 +337,17 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced 
       <ProvablyFairModal
         isOpen={isAuditorOpen}
         onClose={() => setIsAuditorOpen(false)}
-        initialServerSeed=""
-        initialClientSeed={clientSeed}
-        initialNonce={nonce > 1 ? nonce - 1 : 1}
+        initialServerSeed={modalSeedParams.serverSeed || ''}
+        initialServerSeedHash={modalSeedParams.serverSeedHash || serverSeedHash}
+        initialClientSeed={modalSeedParams.clientSeed || clientSeed}
+        initialNonce={modalSeedParams.nonce || (nonce > 1 ? nonce - 1 : 1)}
+        initialGameType="DICE"
+        isDemoMode={isDemoMode}
+        onSeedRotated={(newHash, newClient) => {
+          setServerSeedHash(newHash);
+          setClientSeed(newClient);
+          setNonce(1);
+        }}
       />
     </div>
   );

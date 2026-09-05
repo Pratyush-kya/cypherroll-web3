@@ -1,13 +1,15 @@
 import { calculateCrashPoint, generateServerSeed } from '@/lib/provably-fair';
-import { settleCrashCashout, settleCrashBust, broadcastLiveBet } from '@/lib/supabase';
+import { settleCrashCashout, settleCrashBust, broadcastLiveBet, recordCrashRound, calculateDeterministicRakeback, getOrCreatePlayer } from '@/lib/supabase';
 import { distributedState } from '@/lib/distributed-state';
 
 export interface CrashPlayerBet {
   wallet: string;
   wager: number;
+  autoCashoutMultiplier?: number;
   cashedOut: boolean;
   cashedOutAt?: number;
   profit?: number;
+  isAutoCashout?: boolean;
 }
 
 export interface CrashRoundState {
@@ -16,8 +18,16 @@ export interface CrashRoundState {
   multiplier: number;
   countdown: number;
   crashPoint?: number;
+  crashedAt?: number;
   serverSeedHash: string;
-  activeBets: { wallet: string; wager: number; cashedOut: boolean; cashedOutAt?: number }[];
+  activeBets: {
+    wallet: string;
+    wager: number;
+    autoCashoutMultiplier?: number;
+    cashedOut: boolean;
+    cashedOutAt?: number;
+    isAutoCashout?: boolean;
+  }[];
   history: number[];
 }
 
@@ -28,12 +38,13 @@ class CrashEngine {
   private crashPoint: number = 1.00;
   private countdown: number = 5.0;
   private startTime: number = 0;
+  private crashedAt: number = 0;
   private serverSeed: string = '';
   private serverSeedHash: string = '';
   private clientSeed: string = 'global_crash_seed_1';
   private nonce: number = 1;
   private bets: Map<string, CrashPlayerBet> = new Map();
-  private history: number[] = [1.85, 3.42, 1.15, 8.20, 2.05, 1.00, 4.50];
+  private history: number[] = [];
   private interval: NodeJS.Timeout | null = null;
   private listeners: Set<(state: CrashRoundState) => void> = new Set();
 
@@ -55,6 +66,7 @@ class CrashEngine {
     this.multiplier = remote.multiplier;
     this.countdown = remote.countdown;
     if (remote.crashPoint !== undefined) this.crashPoint = remote.crashPoint;
+    if (remote.crashedAt !== undefined) this.crashedAt = remote.crashedAt;
     this.serverSeedHash = remote.serverSeedHash;
     this.history = remote.history;
 
@@ -64,8 +76,10 @@ class CrashEngine {
       this.bets.set(b.wallet, {
         wallet: b.wallet,
         wager: b.wager,
+        autoCashoutMultiplier: b.autoCashoutMultiplier,
         cashedOut: b.cashedOut,
         cashedOutAt: b.cashedOutAt,
+        isAutoCashout: b.isAutoCashout,
       });
     }
 
@@ -80,6 +94,7 @@ class CrashEngine {
     this.status = 'STARTING';
     this.multiplier = 1.00;
     this.countdown = 5.0;
+    this.crashedAt = 0;
     this.bets.clear();
 
     // Calculate deterministic crash point for the round upfront
@@ -108,10 +123,24 @@ class CrashEngine {
         const currentMulti = parseFloat((1.00 * Math.exp(0.065 * elapsedSec)).toFixed(2));
 
         if (currentMulti >= this.crashPoint) {
+          // Trigger any auto-cashouts that hit before or at crash point
+          await this.checkAutoCashouts(this.crashPoint);
+
           // BUST!
+          this.crashedAt = Date.now();
           this.multiplier = this.crashPoint;
           this.status = 'CRASHED';
           this.history = [this.crashPoint, ...this.history.slice(0, 9)];
+
+          // Record round outcome in crash_rounds audit table
+          recordCrashRound({
+            roundId: this.roundId,
+            crashPoint: this.crashPoint,
+            serverSeedHash: this.serverSeedHash,
+            serverSeed: this.serverSeed,
+            clientSeed: this.clientSeed,
+            nonce: this.nonce - 1,
+          }).catch(() => {});
 
           // Process all un-cashed players as lost in DB
           this.finalizeUncashedBets();
@@ -122,6 +151,8 @@ class CrashEngine {
           }, 3500);
         } else {
           this.multiplier = currentMulti;
+          // Check auto-cashouts for players whose target has been reached at this tick
+          await this.checkAutoCashouts(currentMulti);
         }
       }
 
@@ -136,21 +167,39 @@ class CrashEngine {
     for (const [wallet, bet] of this.bets.entries()) {
       if (!bet.cashedOut) {
         bet.profit = -bet.wager;
-        // Record loss in database ledger (wager already locked)
-        settleCrashBust({
-          wallet,
-          wager: bet.wager,
-          crashPoint: this.crashPoint,
-          serverSeedHash: this.serverSeedHash,
-          clientSeed: this.clientSeed,
-          nonce: this.nonce - 1,
-          rakebackEarned: parseFloat(((bet.wager * 0.02) * 0.15).toFixed(4)),
-        }).catch((err) => console.error("Error finalizing crash bet loss:", err));
+        // Record loss in database ledger (wager already locked for real bets)
+        if (wallet.toLowerCase().startsWith('demo')) continue;
+        
+        getOrCreatePlayer(wallet).then(profile => {
+          const actualRakeback = calculateDeterministicRakeback(bet.wager, 0.02, profile.vip_tier);
+          settleCrashBust({
+            wallet,
+            wager: bet.wager,
+            crashPoint: this.crashPoint,
+            serverSeedHash: this.serverSeedHash,
+            clientSeed: this.clientSeed,
+            nonce: this.nonce - 1,
+            rakebackEarned: actualRakeback,
+          }).catch((err) => console.error("Error finalizing crash bet loss:", err));
+        }).catch(err => console.error("Error fetching player for bust:", err));
       }
     }
   }
 
-  public async placeBet(wallet: string, wager: number): Promise<{ success: boolean; error?: string }> {
+  public async placeBet(
+    wallet: string,
+    wager: number,
+    autoCashoutMultiplier?: number
+  ): Promise<{ success: boolean; error?: string }> {
+    let validatedAuto: number | undefined = undefined;
+    if (autoCashoutMultiplier !== undefined && autoCashoutMultiplier !== null && !isNaN(Number(autoCashoutMultiplier))) {
+      const num = Number(autoCashoutMultiplier);
+      if (num < 1.01 || num > 10000) {
+        return { success: false, error: 'Auto-cashout multiplier must be between 1.01× and 10,000×' };
+      }
+      validatedAuto = parseFloat(num.toFixed(2));
+    }
+
     // Acquire distributed lock for user balance safety
     const lock = await distributedState.acquireLock(`crash_bet:${wallet}`, 2500);
     if (!lock) {
@@ -167,6 +216,7 @@ class CrashEngine {
       this.bets.set(wallet, {
         wallet,
         wager,
+        autoCashoutMultiplier: validatedAuto,
         cashedOut: false,
       });
 
@@ -178,53 +228,59 @@ class CrashEngine {
     }
   }
 
-  public async cashOut(wallet: string): Promise<{
+  private async executeCashoutInternal(
+    bet: CrashPlayerBet,
+    targetMultiplier: number,
+    isAuto: boolean
+  ): Promise<{
     success: boolean;
-    payout?: number;
-    multiplier?: number;
+    payout: number;
+    multiplier: number;
     newBalance?: number;
     vipTier?: string;
     rakeback?: number;
-    error?: string;
   }> {
-    if (this.status !== 'FLYING') {
-      return { success: false, error: 'Round is not currently active' };
-    }
-    const bet = this.bets.get(wallet);
-    if (!bet) {
-      return { success: false, error: 'No active bet in this round' };
-    }
-    if (bet.cashedOut) {
-      return { success: false, error: 'Already cashed out' };
-    }
-
-    const currentMulti = this.multiplier;
-    const payout = parseFloat((bet.wager * currentMulti).toFixed(2));
+    const payout = parseFloat((bet.wager * targetMultiplier).toFixed(2));
     const profit = parseFloat((payout - bet.wager).toFixed(2));
 
     bet.cashedOut = true;
-    bet.cashedOutAt = currentMulti;
+    bet.cashedOutAt = targetMultiplier;
     bet.profit = profit;
+    bet.isAutoCashout = isAuto;
+
+    // In demo mode, bypass DB settlement and broadcast
+    if (bet.wallet.toLowerCase().startsWith('demo')) {
+      this.notifyListeners();
+      distributedState.publish('cypherroll:crash:state', this.getState()).catch(() => {});
+      return {
+        success: true,
+        payout,
+        multiplier: targetMultiplier,
+      };
+    }
 
     // Credit payout atomically in database ledger
+    const profile = await getOrCreatePlayer(bet.wallet);
+    const actualRakeback = calculateDeterministicRakeback(bet.wager, 0.02, profile.vip_tier);
+    
     const settlement = await settleCrashCashout({
-      wallet,
+      wallet: bet.wallet,
       wager: bet.wager,
-      multiplier: currentMulti,
+      multiplier: targetMultiplier,
       payout,
       profit,
       serverSeedHash: this.serverSeedHash,
       clientSeed: this.clientSeed,
       nonce: this.nonce - 1,
-      rakebackEarned: parseFloat(((bet.wager * 0.02) * 0.15).toFixed(4)),
+      rakebackEarned: actualRakeback,
     });
 
     // Broadcast win to global live bets ticker
     broadcastLiveBet({
-      wallet,
+      wallet: bet.wallet,
       gameType: 'CRASH',
       wager: bet.wager,
-      multiplier: currentMulti,
+      multiplier: targetMultiplier,
       payout,
       profit,
       won: true,
@@ -236,11 +292,81 @@ class CrashEngine {
     return {
       success: true,
       payout,
-      multiplier: currentMulti,
+      multiplier: targetMultiplier,
       newBalance: settlement.newBalance,
       vipTier: settlement.vipTier,
       rakeback: settlement.rakeback,
     };
+  }
+
+  private async checkAutoCashouts(currentMulti: number) {
+    for (const bet of this.bets.values()) {
+      if (!bet.cashedOut && bet.autoCashoutMultiplier && bet.autoCashoutMultiplier <= currentMulti) {
+        try {
+          await this.executeCashoutInternal(bet, bet.autoCashoutMultiplier, true);
+        } catch (err) {
+          console.error(`Auto-cashout execution failed for ${bet.wallet}:`, err);
+        }
+      }
+    }
+  }
+
+  public async cashOut(
+    wallet: string,
+    clientMultiplier?: number,
+    clientTimestamp?: number
+  ): Promise<{
+    success: boolean;
+    payout?: number;
+    multiplier?: number;
+    newBalance?: number;
+    vipTier?: string;
+    rakeback?: number;
+    alreadyCashedOut?: boolean;
+    error?: string;
+  }> {
+    const bet = this.bets.get(wallet);
+    if (!bet) {
+      return { success: false, error: 'No active bet in this round' };
+    }
+    if (bet.cashedOut) {
+      const payout = parseFloat((bet.wager * (bet.cashedOutAt || 1)).toFixed(2));
+      return {
+        success: true,
+        payout,
+        multiplier: bet.cashedOutAt,
+        alreadyCashedOut: true,
+      };
+    }
+
+    // Normal flight cashout
+    if (this.status === 'FLYING') {
+      const currentMulti = this.multiplier;
+      return await this.executeCashoutInternal(bet, currentMulti, false);
+    }
+
+    // Network Latency Grace Window (250ms buffer post-crash)
+    // Protects players from ping spikes / network jitter when clicking cashout before packet arrives
+    const LATENCY_GRACE_MS = 250;
+    if (this.status === 'CRASHED' && this.crashedAt > 0) {
+      const timeSinceCrash = Date.now() - this.crashedAt;
+      if (timeSinceCrash <= LATENCY_GRACE_MS) {
+        const requestedMulti = clientMultiplier && clientMultiplier < this.crashPoint
+          ? Math.max(1.01, parseFloat(clientMultiplier.toFixed(2)))
+          : Math.max(1.01, parseFloat((this.crashPoint - 0.01).toFixed(2)));
+
+        if (requestedMulti < this.crashPoint) {
+          const result = await this.executeCashoutInternal(bet, requestedMulti, false);
+          return {
+            ...result,
+            multiplier: requestedMulti,
+          };
+        }
+      }
+      return { success: false, error: 'Round crashed before cashout packet was received' };
+    }
+
+    return { success: false, error: 'Round is not currently active' };
   }
 
   public getState(): CrashRoundState {
@@ -250,12 +376,15 @@ class CrashEngine {
       multiplier: this.multiplier,
       countdown: this.countdown,
       crashPoint: this.status === 'CRASHED' ? this.crashPoint : undefined,
+      crashedAt: this.status === 'CRASHED' ? this.crashedAt : undefined,
       serverSeedHash: this.serverSeedHash,
       activeBets: Array.from(this.bets.values()).map((b) => ({
         wallet: b.wallet,
         wager: b.wager,
+        autoCashoutMultiplier: b.autoCashoutMultiplier,
         cashedOut: b.cashedOut,
         cashedOutAt: b.cashedOutAt,
+        isAutoCashout: b.isAutoCashout,
       })),
       history: this.history,
     };

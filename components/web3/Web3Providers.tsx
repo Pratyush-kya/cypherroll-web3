@@ -136,7 +136,7 @@ export default function Web3Providers({ children }: { children: React.ReactNode 
         <QueryClientProvider client={queryClient}>
           <RainbowKitProvider theme={customTheme}>
             <SafeConnectionProvider endpoint={endpoint}>
-              <SafeWalletProvider wallets={solanaWallets} autoConnect={false} localStorageKey="">
+              <SafeWalletProvider wallets={solanaWallets} autoConnect={true} localStorageKey="cypherroll_solana_wallet">
                 <SafeWalletModalProvider>
                   {children}
                 </SafeWalletModalProvider>

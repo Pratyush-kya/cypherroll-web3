@@ -32,7 +32,7 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [onlineCount, setOnlineCount] = useState<number>(24);
+  const [onlineCount, setOnlineCount] = useState<number>(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async () => {
@@ -73,7 +73,7 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
         .on('presence', { event: 'sync' }, () => {
           const state = channel.presenceState();
           const count = Object.keys(state).length;
-          setOnlineCount(Math.max(12, count * 3));
+          setOnlineCount(count || 1); // Strictly real connected socket count
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
@@ -105,22 +105,32 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isSending) return;
-
+    
     setIsSending(true);
+    
+    // Optimistic UI clear for fast feel, but we'll show an alert if it fails
+    const originalMessage = inputMessage;
+    setInputMessage('');
+    
     try {
       const res = await fetch('/api/trollbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender: userWallet || 'Anon_' + Math.random().toString(36).substring(7),
-          vip: userVip || 'Bronze',
-          message: inputMessage.trim(),
-        }),
+        body: JSON.stringify({ message: originalMessage.trim() }),
       });
-      if (res.ok) {
-        setInputMessage('');
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        // Revert message if failed
+        setInputMessage(originalMessage);
+        alert(data.error || 'Failed to send message');
+      } else {
         fetchMessages();
       }
+    } catch {
+      setInputMessage(originalMessage);
+      alert('Network error. Failed to send message.');
     } finally {
       setIsSending(false);
     }

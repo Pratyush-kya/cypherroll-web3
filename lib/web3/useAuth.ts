@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 import bs58Import from 'bs58';
 
 const bs58 = (bs58Import as any).default || bs58Import;
@@ -28,6 +28,7 @@ export function useAuth() {
   // EVM hooks
   const evmAccount = useAccount();
   const { signMessageAsync: signEvmMessage } = useSignMessage();
+  const { disconnect: disconnectEvm } = useDisconnect();
 
   // Restore existing session on mount
   const checkSession = useCallback(async () => {
@@ -137,12 +138,58 @@ export function useAuth() {
     }
   };
 
-  // Sign Out
+  // Disconnect connected wallet (without necessarily being authenticated)
+  const disconnectWallet = useCallback(async () => {
+    try {
+      if (solanaWallet.connected) {
+        await solanaWallet.disconnect();
+      }
+    } catch (e) {
+      console.warn('Solana disconnect error:', e);
+    }
+    try {
+      if (evmAccount.isConnected) {
+        disconnectEvm();
+      }
+    } catch (e) {
+      console.warn('EVM disconnect error:', e);
+    }
+  }, [solanaWallet, evmAccount.isConnected, disconnectEvm]);
+
+  // Sign Out (clears session cookie, disconnects wallets, resets state)
   const signOut = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    if (solanaWallet.connected) solanaWallet.disconnect();
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.warn('Logout API error:', e);
+    }
+    await disconnectWallet();
     setUser(null);
     setIsAuthenticated(false);
+  };
+
+  // Active Wallet Desync Protection: Detect if connected extension wallet differs from session profile
+  const activeEvmAddress = evmAccount.address;
+  const activeSolanaPubkey = solanaWallet.publicKey?.toBase58();
+
+  const walletMismatch = useMemo(() => {
+    if (!isAuthenticated || !user) return false;
+    if (user.chain === 'EVM' && activeEvmAddress) {
+      return activeEvmAddress.toLowerCase() !== user.wallet.toLowerCase();
+    }
+    if (user.chain === 'SOL' && activeSolanaPubkey) {
+      return activeSolanaPubkey !== user.wallet;
+    }
+    return false;
+  }, [isAuthenticated, user, activeEvmAddress, activeSolanaPubkey]);
+
+  const switchWalletSession = async () => {
+    await signOut();
+    if (activeSolanaPubkey) {
+      await signInSolana();
+    } else if (activeEvmAddress) {
+      await signInEVM();
+    }
   };
 
   return {
@@ -151,9 +198,12 @@ export function useAuth() {
     isAuthenticated,
     isAuthenticating,
     authError,
+    walletMismatch,
+    switchWalletSession,
     signInSolana,
     signInEVM,
     signOut,
+    disconnectWallet,
     checkSession,
     solanaConnected: solanaWallet.connected,
     solanaPublicKey: solanaWallet.publicKey?.toBase58(),

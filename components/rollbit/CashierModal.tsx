@@ -11,6 +11,7 @@ interface CashierModalProps {
   balance: number;
   onDepositSuccess: (amount: number) => void;
   onWithdrawSuccess: (amount: number) => void;
+  isDemoMode?: boolean;
 }
 
 interface WithdrawalVoucher {
@@ -23,6 +24,8 @@ interface WithdrawalVoucher {
   txHash?: string;
   amount: number;
   network: string;
+  isPendingMultisig?: boolean;
+  message?: string;
 }
 
 export default function CashierModal({
@@ -32,6 +35,7 @@ export default function CashierModal({
   balance,
   onDepositSuccess,
   onWithdrawSuccess,
+  isDemoMode,
 }: CashierModalProps) {
   const [tab, setTab] = useState<'DEPOSIT' | 'WITHDRAW'>('DEPOSIT');
   const [amount, setAmount] = useState<number>(50);
@@ -63,12 +67,21 @@ export default function CashierModal({
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    // In Demo Mode, top up virtual demo balance directly without backend financial transaction
+    if (isDemoMode) {
+      setTimeout(() => {
+        onDepositSuccess(amount);
+        setIsSubmitting(false);
+        onClose();
+      }, 300);
+      return;
+    }
+
     try {
       const res = await fetch('/api/cashier/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: userWallet,
           amount,
           network: selectedNetwork,
         }),
@@ -170,6 +183,16 @@ export default function CashierModal({
           <span className="text-emerald-400 font-bold">100% Non-Custodial</span>
         </div>
 
+        {/* Demo Mode Notice */}
+        {isDemoMode && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 mb-4 text-[11px] font-mono text-amber-300 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>
+              Cashier operates on <strong>Real Web3 Funds</strong>. Deposits and withdrawals update your on-chain verified profile.
+            </span>
+          </div>
+        )}
+
         {/* Tab Switcher */}
         {!voucher && (
           <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 mb-4 font-heading text-xs font-bold">
@@ -214,19 +237,33 @@ export default function CashierModal({
         {/* Voucher Success Display */}
         {voucher ? (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center gap-3">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
-              <div>
-                <span className="font-heading text-sm font-bold text-emerald-300 block">
-                  Withdrawal Authorized & Signed!
-                </span>
-                <span className="text-xs font-mono text-slate-400">
-                  ${voucher.amount.toFixed(2)} USDC deducted • Nonce #{voucher.nonce}
-                </span>
+            {voucher.isPendingMultisig ? (
+              <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-start gap-3">
+                <ShieldAlert className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-heading text-sm font-bold text-amber-300 block mb-1">
+                    Transparent Multi-sig Audit Required
+                  </span>
+                  <span className="text-xs font-mono text-slate-300 leading-relaxed block">
+                    {voucher.message}
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center gap-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                <div>
+                  <span className="font-heading text-sm font-bold text-emerald-300 block">
+                    Withdrawal Authorized & Signed!
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">
+                    ${voucher.amount.toFixed(2)} USDC deducted • Nonce #{voucher.nonce}
+                  </span>
+                </div>
+              </div>
+            )}
 
-            {voucher.signature ? (
+            {!voucher.isPendingMultisig && voucher.signature ? (
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2.5 font-mono text-xs">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400 flex items-center gap-1.5 font-bold">
@@ -381,8 +418,10 @@ export default function CashierModal({
                 >
                   {isSubmitting ? (
                     <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                  ) : isDemoMode ? (
+                    <span>Add Demo Credits (${amount} USDC)</span>
                   ) : (
-                    <span>Simulate Instant On-Chain Deposit</span>
+                    <span>Simulate Instant Deposit (Dev)</span>
                   )}
                 </button>
               </div>
@@ -404,14 +443,18 @@ export default function CashierModal({
                   />
                 </div>
 
-                {/* Hot Vault Kelly Limit Notice */}
+                {/* Withdrawal Transparency Notice */}
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-5 text-[11px] font-mono text-slate-400">
                   <div className="flex items-center justify-between text-slate-300 mb-1">
-                    <span>Safety Reserve Limit:</span>
-                    <span className="text-primary font-bold">$25,000 / tx</span>
+                    <span>Instant Execution Limit:</span>
+                    <span className="text-emerald-400 font-bold max-w-[50%] text-right truncate">{'<'} $2,500</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300 mb-2">
+                    <span>Multi-sig Audit Threshold:</span>
+                    <span className="text-amber-400 font-bold max-w-[50%] text-right truncate">{'>'} $2,500</span>
                   </div>
                   <p className="text-[10px] text-slate-500 leading-normal">
-                    Withdrawals generate an EIP-712 cryptographic signature signed by the casino operator key conforming to CypherRollVault.sol.
+                    Instant withdrawals generate an EIP-712 cryptographic voucher. Withdrawals exceeding $2,500 enter transparent Multi-Sig audit without opaque KYC lockups. Max limit $25,000/tx.
                   </p>
                 </div>
 
