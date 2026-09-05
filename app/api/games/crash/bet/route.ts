@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     // Register bet in global multiplayer crash engine
-    const result = crashEngine.placeBet(effectiveWallet, wager);
+    const result = await crashEngine.placeBet(effectiveWallet, wager);
     if (!result.success) {
       // Refund if engine rejects (e.g. countdown elapsed)
       await refundPlayerWager(effectiveWallet, wager);

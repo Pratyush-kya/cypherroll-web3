@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { executeDeposit } from '@/lib/supabase';
 import { verifyOnChainDeposit } from '@/lib/web3/deposit-listener';
+import { screenWalletAddress, quarantineDeposit } from '@/lib/security/aml-screening';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,19 @@ export async function POST(req: Request) {
 
     const targetNetwork = (network || 'BASE').toUpperCase() as 'BASE' | 'ARB' | 'SOL';
     const numAmount = parseFloat(amount) || 50;
+
+    // Automated AML / OFAC Sanctions Screening
+    const amlScreening = screenWalletAddress(effectiveWallet);
+    if (amlScreening.action === 'QUARANTINE_DEPOSIT') {
+      quarantineDeposit(txHash.trim(), effectiveWallet, numAmount, amlScreening.flags.join(', '));
+      return NextResponse.json({
+        error: 'Deposit rejected: Address flagged by automated OFAC sanctions oracle.',
+        quarantined: true,
+        riskScore: amlScreening.riskScore,
+        flags: amlScreening.flags,
+        auditId: amlScreening.auditId,
+      }, { status: 403 });
+    }
 
     // Verify on-chain and check idempotency (no double-credit)
     const verification = await verifyOnChainDeposit({
@@ -53,6 +67,7 @@ export async function POST(req: Request) {
       newBalance: depositResult.newBalance,
       txHash: verification.txHash,
       network: targetNetwork,
+      amlRiskScore: amlScreening.riskScore,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Deposit verification failed' }, { status: 500 });

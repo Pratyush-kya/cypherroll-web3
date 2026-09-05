@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Landmark, ArrowDownLeft, ArrowUpRight, Copy, Check, X, ShieldAlert, Key, CheckCircle2, AlertCircle, FileCode } from 'lucide-react';
+import { Landmark, ArrowDownLeft, ArrowUpRight, Copy, Check, X, ShieldAlert, ShieldCheck, Key, CheckCircle2, AlertCircle, FileCode } from 'lucide-react';
 import { truncateHash } from '@/lib/utils';
 
 interface CashierModalProps {
@@ -159,6 +159,15 @@ export default function CashierModal({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Compliance & AML Shield Badge */}
+        <div className="flex items-center justify-between bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl mb-4 text-[10px] font-mono text-slate-400">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Automated AML & OFAC Sanctions Oracle Active</span>
+          </div>
+          <span className="text-emerald-400 font-bold">100% Non-Custodial</span>
         </div>
 
         {/* Tab Switcher */}

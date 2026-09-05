@@ -1,5 +1,6 @@
 import { calculateCrashPoint, generateServerSeed } from '@/lib/provably-fair';
 import { settleCrashCashout, settleCrashBust, broadcastLiveBet } from '@/lib/supabase';
+import { distributedState } from '@/lib/distributed-state';
 
 export interface CrashPlayerBet {
   wallet: string;
@@ -39,6 +40,36 @@ class CrashEngine {
   constructor() {
     this.initRound();
     this.startLoop();
+
+    // Subscribe to distributed state synchronization across cluster nodes
+    distributedState.subscribe<CrashRoundState>('cypherroll:crash:state', (remoteState) => {
+      if (!distributedState.getIsLeader()) {
+        this.syncRemoteState(remoteState);
+      }
+    });
+  }
+
+  private syncRemoteState(remote: CrashRoundState) {
+    this.roundId = remote.roundId;
+    this.status = remote.status;
+    this.multiplier = remote.multiplier;
+    this.countdown = remote.countdown;
+    if (remote.crashPoint !== undefined) this.crashPoint = remote.crashPoint;
+    this.serverSeedHash = remote.serverSeedHash;
+    this.history = remote.history;
+
+    // Sync active bets map
+    this.bets.clear();
+    for (const b of remote.activeBets) {
+      this.bets.set(b.wallet, {
+        wallet: b.wallet,
+        wager: b.wager,
+        cashedOut: b.cashedOut,
+        cashedOutAt: b.cashedOutAt,
+      });
+    }
+
+    this.notifyListeners();
   }
 
   private initRound() {
@@ -60,7 +91,11 @@ class CrashEngine {
     if (this.interval) clearInterval(this.interval);
 
     const TICK_MS = 50;
-    this.interval = setInterval(() => {
+    this.interval = setInterval(async () => {
+      // Only the authoritative leader drives the mathematical progression
+      const isLeader = distributedState.getIsLeader();
+      if (!isLeader) return;
+
       if (this.status === 'STARTING') {
         this.countdown = parseFloat((this.countdown - TICK_MS / 1000).toFixed(2));
         if (this.countdown <= 0) {
@@ -91,6 +126,9 @@ class CrashEngine {
       }
 
       this.notifyListeners();
+
+      // Publish to distributed cluster bus
+      distributedState.publish('cypherroll:crash:state', this.getState()).catch(() => {});
     }, TICK_MS);
   }
 
@@ -112,20 +150,32 @@ class CrashEngine {
     }
   }
 
-  public placeBet(wallet: string, wager: number): { success: boolean; error?: string } {
-    if (this.status !== 'STARTING') {
-      return { success: false, error: 'Bets can only be placed during countdown' };
+  public async placeBet(wallet: string, wager: number): Promise<{ success: boolean; error?: string }> {
+    // Acquire distributed lock for user balance safety
+    const lock = await distributedState.acquireLock(`crash_bet:${wallet}`, 2500);
+    if (!lock) {
+      return { success: false, error: 'Concurrent bet detected on this account' };
     }
-    if (this.bets.has(wallet)) {
-      return { success: false, error: 'Already placed a bet in this round' };
+
+    try {
+      if (this.status !== 'STARTING') {
+        return { success: false, error: 'Bets can only be placed during countdown' };
+      }
+      if (this.bets.has(wallet)) {
+        return { success: false, error: 'Already placed a bet in this round' };
+      }
+      this.bets.set(wallet, {
+        wallet,
+        wager,
+        cashedOut: false,
+      });
+
+      this.notifyListeners();
+      distributedState.publish('cypherroll:crash:state', this.getState()).catch(() => {});
+      return { success: true };
+    } finally {
+      await distributedState.releaseLock(lock);
     }
-    this.bets.set(wallet, {
-      wallet,
-      wager,
-      cashedOut: false,
-    });
-    this.notifyListeners();
-    return { success: true };
   }
 
   public async cashOut(wallet: string): Promise<{
@@ -181,6 +231,8 @@ class CrashEngine {
     });
 
     this.notifyListeners();
+    distributedState.publish('cypherroll:crash:state', this.getState()).catch(() => {});
+
     return {
       success: true,
       payout,
