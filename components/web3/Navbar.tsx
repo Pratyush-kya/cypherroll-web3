@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, Wallet, Globe, ArrowUpRight, Flame, Layers, Crown, Landmark, MessageSquare, Lock, KeyRound, LogOut } from 'lucide-react';
+import { Shield, Wallet, Globe, ArrowUpRight, Flame, Layers, Crown, Landmark, MessageSquare, Lock, KeyRound, LogOut, Sparkles } from 'lucide-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { truncateHash } from '@/lib/utils';
 import { UserProfile } from '@/lib/web3/useAuth';
 
 interface NavbarProps {
-  activeTab: 'DICE' | 'CRASH' | 'VAULT';
-  setActiveTab: (tab: 'DICE' | 'CRASH' | 'VAULT') => void;
+  activeTab: 'DICE' | 'CRASH' | 'VAULT' | 'SHOWCASE';
+  setActiveTab: (tab: 'DICE' | 'CRASH' | 'VAULT' | 'SHOWCASE') => void;
   user: UserProfile | null;
   isAuthenticated: boolean;
   isAuthenticating: boolean;
@@ -104,6 +104,17 @@ export default function Navbar({
             }`}
           >
             Bankroll LP
+          </button>
+          <button
+            onClick={() => setActiveTab('SHOWCASE')}
+            className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-heading font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === 'SHOWCASE'
+                ? 'bg-gradient-to-r from-amber-500 via-purple-600 to-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'text-amber-400/90 hover:text-amber-300'
+            }`}
+          >
+            <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" />
+            <span>3D Studio</span>
           </button>
         </nav>
 
