@@ -5,7 +5,6 @@ import Navbar from '@/components/web3/Navbar';
 import DiceGame from '@/components/games/DiceGame';
 import CrashGame from '@/components/games/CrashGame';
 import BankrollVault from '@/components/web3/BankrollVault';
-import BlenderShowcaseStudio from '@/components/3d/BlenderShowcaseStudio';
 import FAQSection from '@/components/rollbit/FAQSection';
 import Trollbox from '@/components/rollbit/Trollbox';
 import LiveBetsTicker from '@/components/rollbit/LiveBetsTicker';
@@ -13,10 +12,10 @@ import VIPRakebackModal from '@/components/rollbit/VIPRakebackModal';
 import CashierModal from '@/components/rollbit/CashierModal';
 import SecurityModal from '@/components/rollbit/SecurityModal';
 import { useAuth } from '@/lib/web3/useAuth';
-import { Sparkles, Box } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function CasinoHome() {
-  const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'VAULT' | 'SHOWCASE'>('DICE');
+  const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'VAULT'>('DICE');
   const {
     user,
     setUser,
@@ -106,18 +105,9 @@ export default function CasinoHome() {
 
       {/* Hero Headline */}
       <div className="max-w-7xl mx-auto px-4 pt-6 pb-2 w-full text-center">
-        <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>Multi-Chain Cryptographic Sessions • SIWE & SIWS Verified</span>
-          </div>
-          <button
-            onClick={() => setActiveTab(activeTab === 'SHOWCASE' ? 'DICE' : 'SHOWCASE')}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-cyan-500/10 border border-cyan-500/40 text-xs font-mono text-cyan-300 hover:border-cyan-400 transition-all shadow-sm cursor-pointer"
-          >
-            <Box className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span>{activeTab === 'SHOWCASE' ? '← Back to Games' : '✨ Open 3D Blender Studio'}</span>
-          </button>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400 mb-3">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
+          <span>Multi-Chain Cryptographic Sessions • SIWE & SIWS Verified</span>
         </div>
         <h1 className="text-3xl md:text-5xl font-heading font-black tracking-tight text-foreground uppercase">
           Autonomous <span className="text-primary">Provably Fair</span> Gaming
@@ -143,7 +133,6 @@ export default function CasinoHome() {
           />
         )}
         {activeTab === 'VAULT' && <BankrollVault />}
-        {activeTab === 'SHOWCASE' && <BlenderShowcaseStudio />}
       </div>
 
       {/* Interactive FAQ Section */}
