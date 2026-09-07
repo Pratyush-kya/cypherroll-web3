@@ -1,5 +1,9 @@
 # CypherRoll Web3 Casino 🎲🚀
 
+[![Deployed on Vercel](https://vercelbadge.vercel.app/api/button)](https://vercel.com)
+
+**🌍 Live Demo:** Successfully deployed and running live in production via Vercel.
+
 CypherRoll is a next-generation, provably fair Web3 Crypto Casino built for the future. It features high-end native 3D WebGL game environments, real-time cryptographic fairness, seamless crypto banking, and a comprehensive Admin management system.
 
 ## 🌟 Key Features
