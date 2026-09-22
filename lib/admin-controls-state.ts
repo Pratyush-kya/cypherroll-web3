@@ -16,6 +16,8 @@ class AdminControlsState {
   private maintenanceMode: boolean = false;
   private crashEnginePaused: boolean = false;
   private diceEnginePaused: boolean = false;
+  private minesEnginePaused: boolean = false;
+  private plinkoEnginePaused: boolean = false;
   private auditLogs: AdminAuditLog[] = [
     {
       id: 'init_1',
@@ -39,13 +41,18 @@ class AdminControlsState {
     });
   }
 
-  public getEnginePaused(game: 'CRASH' | 'DICE'): boolean {
-    return game === 'CRASH' ? this.crashEnginePaused : this.diceEnginePaused;
+  public getEnginePaused(game: 'CRASH' | 'DICE' | 'MINES' | 'PLINKO'): boolean {
+    if (game === 'CRASH') return this.crashEnginePaused;
+    if (game === 'DICE') return this.diceEnginePaused;
+    if (game === 'MINES') return this.minesEnginePaused;
+    return this.plinkoEnginePaused;
   }
 
-  public setEnginePaused(game: 'CRASH' | 'DICE', paused: boolean, operator: string): void {
+  public setEnginePaused(game: 'CRASH' | 'DICE' | 'MINES' | 'PLINKO', paused: boolean, operator: string): void {
     if (game === 'CRASH') this.crashEnginePaused = paused;
-    else this.diceEnginePaused = paused;
+    else if (game === 'DICE') this.diceEnginePaused = paused;
+    else if (game === 'MINES') this.minesEnginePaused = paused;
+    else this.plinkoEnginePaused = paused;
 
     this.logAction({
       action: `${game}_ENGINE_${paused ? 'PAUSED' : 'RESUMED'}`,

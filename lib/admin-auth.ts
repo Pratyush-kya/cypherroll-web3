@@ -4,12 +4,16 @@
 
 import crypto from 'crypto';
 
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'cypherroll_admin_master_2026_x99!';
-const SESSION_SECRET = process.env.SESSION_SECRET || 'cypherroll-super-secret-production-key-999';
-const ADMIN_ALLOWED_WALLETS = (process.env.ADMIN_ALLOWED_WALLETS || '0x689692BcbE6afa3D6a80d7Fd7380cf0883d35Ad9')
+if (!process.env.ADMIN_SECRET_KEY) console.warn('[SECURITY] ADMIN_SECRET_KEY not set — admin auth disabled');
+if (!process.env.SESSION_SECRET) console.warn('[SECURITY] SESSION_SECRET not set — using random ephemeral key');
+
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || crypto.randomBytes(32).toString('hex');
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const ADMIN_ALLOWED_WALLETS = (process.env.ADMIN_ALLOWED_WALLETS || '')
   .toLowerCase()
   .split(',')
-  .map(w => w.trim());
+  .map(w => w.trim())
+  .filter(Boolean);
 
 // Rate Limiting Map (In-Memory per Node instance)
 interface RateLimitRecord {

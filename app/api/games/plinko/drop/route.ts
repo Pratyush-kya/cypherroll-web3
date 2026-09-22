@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getOrCreatePlayer, recordAtomicBet, broadcastLiveBet, calculateDeterministicRakeback } from '@/lib/supabase';
-import { calculateDiceRoll, getDiceMultiplier } from '@/lib/provably-fair';
+import { calculatePlinkoPath, getPlinkoSlot, getPlinkoMultipliers } from '@/lib/provably-fair';
 import { verifySession } from '@/lib/auth';
 import { adminControlsState } from '@/lib/admin-controls-state';
 
@@ -10,21 +10,29 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     // Maintenance Circuit Breaker Guard
-    if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('DICE')) {
+    if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('PLINKO')) {
       return NextResponse.json({
-        error: 'Dice wagering is currently paused by the operator for maintenance.',
+        error: 'Plinko wagering is currently paused by the operator for maintenance.',
       }, { status: 503 });
     }
 
     const body = await req.json();
-    const { walletAddress, target, wager, clientSeed, isDemo } = body;
+    const { walletAddress, wager, rows, risk, clientSeed, isDemo } = body;
 
-    if (!target || !wager) {
+    if (!wager || !rows || !risk) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    if (wager <= 0 || wager < 1 || wager > 500 || target < 2 || target > 98) {
+    if (wager <= 0 || wager < 1 || wager > 500) {
       return NextResponse.json({ error: 'Invalid bet parameters. Wager must be $1–$500.' }, { status: 400 });
+    }
+    
+    if (![8, 12, 16].includes(rows)) {
+      return NextResponse.json({ error: 'Invalid rows. Must be 8, 12, or 16.' }, { status: 400 });
+    }
+
+    if (!['LOW', 'MEDIUM', 'HIGH'].includes(risk)) {
+      return NextResponse.json({ error: 'Invalid risk level. Must be LOW, MEDIUM, or HIGH.' }, { status: 400 });
     }
 
     // Handle Demo Mode (Safe Provably-Fair Simulation without DB balance impact)
@@ -34,19 +42,22 @@ export async function POST(req: Request) {
       const currentClientSeed = clientSeed || 'demo_player_seed';
       const currentNonce = Math.floor(Math.random() * 10000) + 1;
 
-      const roll = calculateDiceRoll(demoServerSeed, currentClientSeed, currentNonce);
-      const won = roll < target;
-      const multiplier = getDiceMultiplier(target);
-      const profit = won
-        ? parseFloat(((wager * multiplier) - wager).toFixed(2))
-        : -wager;
+      const path = calculatePlinkoPath(demoServerSeed, currentClientSeed, currentNonce, rows);
+      const slot = getPlinkoSlot(path);
+      const multipliers = getPlinkoMultipliers(rows, risk as any);
+      const multiplier = multipliers[slot];
+      const payout = parseFloat((wager * multiplier).toFixed(2));
+      const profit = parseFloat((payout - wager).toFixed(2));
+      const won = multiplier > 1;
 
       return NextResponse.json({
         success: true,
         isDemo: true,
-        roll,
+        path,
+        slot,
         won,
         multiplier,
+        payout,
         profit,
         serverSeedHash: demoServerSeedHash,
         serverSeed: demoServerSeed,
@@ -85,25 +96,26 @@ export async function POST(req: Request) {
     const serverSeedHash = profile.active_server_seed_hash;
 
     // 2. Server-Authoritative Cryptographic Calculation
-    const roll = calculateDiceRoll(serverSeed, currentClientSeed, currentNonce);
-    const won = roll < target;
-    const multiplier = getDiceMultiplier(target);
-    const profit = won
-      ? parseFloat(((wager * multiplier) - wager).toFixed(2))
-      : -wager;
-    const payout = won ? parseFloat((wager * multiplier).toFixed(2)) : 0.0;
+    const path = calculatePlinkoPath(serverSeed, currentClientSeed, currentNonce, rows);
+    const slot = getPlinkoSlot(path);
+    const multipliers = getPlinkoMultipliers(rows, risk as any);
+    const multiplier = multipliers[slot];
+    
+    const payout = parseFloat((wager * multiplier).toFixed(2));
+    const profit = parseFloat((payout - wager).toFixed(2));
+    const won = multiplier > 1;
 
-    // 3. Calculate VIP Rakeback on theoretical house edge (1% on Dice)
+    // 3. Calculate VIP Rakeback on theoretical house edge (approx 2% for Plinko)
     const rakebackEarned = calculateDeterministicRakeback(wager, 0.02, profile.vip_tier);
 
     // 4. Atomic Database Transaction
     const updatedState = await recordAtomicBet({
       wallet: effectiveWallet,
-      gameType: 'DICE',
+      gameType: 'PLINKO',
       wager,
       won,
       targetPayout: multiplier,
-      outcome: roll,
+      outcome: slot, // Storing slot as outcome
       payout,
       profit,
       serverSeedHash,
@@ -115,7 +127,7 @@ export async function POST(req: Request) {
     // 5. Broadcast live bet in realtime across the platform
     broadcastLiveBet({
       wallet: effectiveWallet,
-      gameType: 'DICE',
+      gameType: 'PLINKO',
       wager,
       multiplier,
       payout,
@@ -125,9 +137,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      roll,
+      path,
+      slot,
       won,
       multiplier,
+      payout,
       profit,
       newBalance: updatedState.new_balance,
       newNonce: updatedState.new_nonce,

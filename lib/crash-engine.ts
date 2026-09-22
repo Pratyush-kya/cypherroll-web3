@@ -171,7 +171,7 @@ class CrashEngine {
         if (wallet.toLowerCase().startsWith('demo')) continue;
         
         getOrCreatePlayer(wallet).then(profile => {
-          const actualRakeback = calculateDeterministicRakeback(bet.wager, 0.02, profile.vip_tier);
+          const actualRakeback = calculateDeterministicRakeback(bet.wager, 0.03, profile.vip_tier);
           settleCrashBust({
             wallet,
             wager: bet.wager,
@@ -261,7 +261,7 @@ class CrashEngine {
 
     // Credit payout atomically in database ledger
     const profile = await getOrCreatePlayer(bet.wallet);
-    const actualRakeback = calculateDeterministicRakeback(bet.wager, 0.02, profile.vip_tier);
+    const actualRakeback = calculateDeterministicRakeback(bet.wager, 0.03, profile.vip_tier);
     
     const settlement = await settleCrashCashout({
       wallet: bet.wallet,
@@ -345,11 +345,15 @@ class CrashEngine {
       return await this.executeCashoutInternal(bet, currentMulti, false);
     }
 
-    // Network Latency Grace Window (250ms buffer post-crash)
-    // Protects players from ping spikes / network jitter when clicking cashout before packet arrives
-    const LATENCY_GRACE_MS = 250;
+    // Network Latency Grace Window (50ms buffer post-crash)
+    // Tightened from 250ms to prevent bot exploitation
+    const LATENCY_GRACE_MS = 50;
     if (this.status === 'CRASHED' && this.crashedAt > 0) {
       const timeSinceCrash = Date.now() - this.crashedAt;
+      // Reject if client timestamp is after crash (bot detection)
+      if (clientTimestamp && clientTimestamp > this.crashedAt) {
+        return { success: false, error: 'Cashout request timestamp is after crash — rejected' };
+      }
       if (timeSinceCrash <= LATENCY_GRACE_MS) {
         const requestedMulti = clientMultiplier && clientMultiplier < this.crashPoint
           ? Math.max(1.01, parseFloat(clientMultiplier.toFixed(2)))

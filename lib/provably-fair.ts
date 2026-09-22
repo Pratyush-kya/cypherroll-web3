@@ -59,7 +59,7 @@ export function getDiceMultiplier(targetNumber: number): number {
   if (targetNumber < 1 || targetNumber > 98) {
     throw new Error("Target number must be between 1.00 and 98.00");
   }
-  const houseEdge = 0.01; // 1%
+  const houseEdge = 0.02; // 2% house edge (98% RTP) — industry standard range
   const winProbability = targetNumber / 100;
   const multiplier = ((1 - houseEdge) / winProbability);
   return parseFloat(multiplier.toFixed(4));
@@ -79,9 +79,9 @@ export function calculateCrashPoint(serverSeed: string, clientSeed: string, nonc
   const h = parseInt(subHash, 16);
   const e = Math.pow(2, 52);
 
-  // Formula with exactly 2% mathematical house edge:
-  // When h < 0.02 * e (which occurs with 2.0% probability), result is < 1.00 and clamps to 1.00 (instant crash)
-  const rawCrash = (0.98 * e) / (e - h);
+  // Formula with 3% mathematical house edge (97% RTP):
+  // When h < 0.03 * e (3.0% probability), result < 1.00 → instant crash at 1.00×
+  const rawCrash = (0.97 * e) / (e - h);
   if (rawCrash < 1.00) {
     return 1.00;
   }
@@ -188,3 +188,90 @@ export function getDetailedGameProof(
   }
 }
 
+/**
+ * CypherMines: Generates deterministic mine positions using HMAC-SHA256 chain.
+ * House Edge: 2% built into payout multipliers
+ */
+export function calculateMinePositions(serverSeed: string, clientSeed: string, nonce: number, mineCount: number): number[] {
+  const positions: number[] = [];
+  const available = Array.from({ length: 25 }, (_, i) => i);
+  
+  for (let i = 0; i < mineCount; i++) {
+    // Derive unique entropy per mine index by using nonce * 1000 + i as the sub-nonce
+    const hex = computeHMAC(serverSeed, `${clientSeed}:mine:${i}`, nonce * 1000 + i);
+    const idx = parseInt(hex.substring(0, 8), 16) % available.length;
+    positions.push(available[idx]);
+    available.splice(idx, 1);
+  }
+  
+  return positions.sort((a, b) => a - b);
+}
+
+/**
+ * Mines payout multiplier with 2% house edge
+ */
+export function getMinesMultiplier(mineCount: number, gemsRevealed: number): number {
+  const totalTiles = 25;
+  const safeTiles = totalTiles - mineCount;
+  
+  if (gemsRevealed <= 0 || gemsRevealed > safeTiles) return 0;
+  
+  let fairMultiplier = 1;
+  for (let i = 0; i < gemsRevealed; i++) {
+    fairMultiplier *= (totalTiles - i) / (safeTiles - i);
+  }
+  
+  const houseEdge = 0.02;
+  return parseFloat((fairMultiplier * (1 - houseEdge)).toFixed(4));
+}
+
+/**
+ * CypherPlinko: Generates deterministic bounce path.
+ * Each peg bounce is 50/50 left(0)/right(1), derived from HMAC bits.
+ * House Edge: 2-3% built into slot multipliers
+ */
+export function calculatePlinkoPath(serverSeed: string, clientSeed: string, nonce: number, rows: number): number[] {
+  const hex = computeHMAC(serverSeed, clientSeed, nonce);
+  const path: number[] = [];
+  
+  for (let i = 0; i < rows; i++) {
+    const byteIndex = Math.floor(i / 8);
+    const bitIndex = i % 8;
+    const byte = parseInt(hex.substring(byteIndex * 2, byteIndex * 2 + 2), 16);
+    path.push((byte >> bitIndex) & 1); // 0 = left, 1 = right
+  }
+  
+  return path;
+}
+
+/**
+ * Returns the slot index the ball lands in (0 to rows)
+ */
+export function getPlinkoSlot(path: number[]): number {
+  return path.reduce((sum, dir) => sum + dir, 0);
+}
+
+/**
+ * Plinko multiplier tables with ~2-3% house edge
+ */
+export function getPlinkoMultipliers(rows: number, risk: 'LOW' | 'MEDIUM' | 'HIGH'): number[] {
+  const tables: Record<string, Record<number, number[]>> = {
+    LOW: {
+      8:  [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
+      12: [8.9, 3.0, 1.6, 1.1, 1.0, 0.7, 0.5, 0.7, 1.0, 1.1, 1.6, 3.0, 8.9],
+      16: [16, 9, 2, 1.4, 1.1, 1.0, 0.7, 0.5, 0.3, 0.5, 0.7, 1.0, 1.1, 1.4, 2, 9, 16],
+    },
+    MEDIUM: {
+      8:  [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13],
+      12: [33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33],
+      16: [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110],
+    },
+    HIGH: {
+      8:  [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29],
+      12: [170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170],
+      16: [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000],
+    },
+  };
+  
+  return tables[risk]?.[rows] || tables.MEDIUM[8];
+}

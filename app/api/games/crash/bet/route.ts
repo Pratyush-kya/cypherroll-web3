@@ -18,8 +18,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { walletAddress, wager, isDemo, autoCashout } = body;
 
-    if (!wager || wager <= 0) {
-      return NextResponse.json({ error: 'Invalid wager amount' }, { status: 400 });
+    if (!wager || wager < 1 || wager > 1000) {
+      return NextResponse.json({ error: 'Invalid wager. Must be $1–$1,000.' }, { status: 400 });
     }
 
     let parsedAutoCashout: number | undefined = undefined;

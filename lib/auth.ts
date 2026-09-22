@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'cypherroll-super-secret-production-key-999';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
-// 1 Year (365 Days) Permanent Session Lifetime
-export const SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60; // 31,536,000s
+// 24-Hour Session Lifetime (hardened from 1 year)
+export const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60; // 86,400s
 
 export function signSession(data: object): string {
   const payload = Buffer.from(JSON.stringify(data)).toString('base64url');

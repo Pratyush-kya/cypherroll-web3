@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/web3/Navbar';
 import DiceGame from '@/components/games/DiceGame';
 import CrashGame from '@/components/games/CrashGame';
+import MinesGame from '@/components/games/MinesGame';
+import PlinkoGame from '@/components/games/PlinkoGame';
 import BankrollVault from '@/components/web3/BankrollVault';
 import FAQSection from '@/components/rollbit/FAQSection';
 import Trollbox from '@/components/rollbit/Trollbox';
@@ -17,7 +19,7 @@ import { useAuth } from '@/lib/web3/useAuth';
 import { Sparkles } from 'lucide-react';
 
 export default function CasinoHome() {
-  const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'VAULT'>('DICE');
+  const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'MINES' | 'PLINKO' | 'VAULT'>('DICE');
   const {
     user,
     setUser,
@@ -238,6 +240,24 @@ export default function CasinoHome() {
         )}
         {activeTab === 'CRASH' && (
           <CrashGame
+            userWallet={activeWallet}
+            balance={activeBalance}
+            setBalance={handleSetBalance}
+            onBetPlaced={handleBetPlaced}
+            isDemoMode={isDemoMode}
+          />
+        )}
+        {activeTab === 'MINES' && (
+          <MinesGame
+            userWallet={activeWallet}
+            balance={activeBalance}
+            setBalance={handleSetBalance}
+            onBetPlaced={handleBetPlaced}
+            isDemoMode={isDemoMode}
+          />
+        )}
+        {activeTab === 'PLINKO' && (
+          <PlinkoGame
             userWallet={activeWallet}
             balance={activeBalance}
             setBalance={handleSetBalance}

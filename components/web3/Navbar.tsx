@@ -9,8 +9,8 @@ import { truncateHash } from '@/lib/utils';
 import { UserProfile } from '@/lib/web3/useAuth';
 
 interface NavbarProps {
-  activeTab: 'DICE' | 'CRASH' | 'VAULT';
-  setActiveTab: (tab: 'DICE' | 'CRASH' | 'VAULT') => void;
+  activeTab: 'DICE' | 'CRASH' | 'MINES' | 'PLINKO' | 'VAULT';
+  setActiveTab: (tab: 'DICE' | 'CRASH' | 'MINES' | 'PLINKO' | 'VAULT') => void;
   user: UserProfile | null;
   isAuthenticated: boolean;
   isAuthenticating: boolean;
@@ -109,6 +109,28 @@ export default function Navbar({
               }`}
             >
               CypherCrash
+            </button>
+            <button
+              onClick={() => setActiveTab('MINES')}
+              title="CypherMines - Minesweeper gambling with gem reveals"
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-heading font-bold transition-all ${
+                activeTab === 'MINES'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-foreground'
+              }`}
+            >
+              CypherMines
+            </button>
+            <button
+              onClick={() => setActiveTab('PLINKO')}
+              title="CypherPlinko - 3D provably fair plinko ball drop"
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-heading font-bold transition-all ${
+                activeTab === 'PLINKO'
+                  ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                  : 'text-slate-400 hover:text-foreground'
+              }`}
+            >
+              CypherPlinko
             </button>
             <button
               onClick={() => setActiveTab('VAULT')}
@@ -369,26 +391,38 @@ export default function Navbar({
       <div className="flex items-center justify-around p-2">
         <button
           onClick={() => setActiveTab('DICE')}
-          className={`flex flex-col items-center gap-1 p-2 w-16 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-1 p-2 w-14 rounded-xl transition-all ${
             activeTab === 'DICE' 
               ? 'text-primary scale-110 bg-primary/10' 
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <span className="text-xl">🎲</span>
+          <span className="text-lg">🎲</span>
           <span className="text-[9px] font-heading font-bold">DICE</span>
         </button>
 
         <button
           onClick={() => setActiveTab('CRASH')}
-          className={`flex flex-col items-center gap-1 p-2 w-16 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-1 p-2 w-14 rounded-xl transition-all ${
             activeTab === 'CRASH' 
               ? 'text-cta scale-110 bg-cta/10' 
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <span className="text-xl">🚀</span>
+          <span className="text-lg">🚀</span>
           <span className="text-[9px] font-heading font-bold">CRASH</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('MINES')}
+          className={`flex flex-col items-center gap-1 p-2 w-14 rounded-xl transition-all ${
+            activeTab === 'MINES' 
+              ? 'text-emerald-400 scale-110 bg-emerald-500/10' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <span className="text-lg">💎</span>
+          <span className="text-[9px] font-heading font-bold">MINES</span>
         </button>
 
         {/* Floating Action Button for Cashier */}
@@ -402,27 +436,27 @@ export default function Navbar({
         </div>
 
         <button
+          onClick={() => setActiveTab('PLINKO')}
+          className={`flex flex-col items-center gap-1 p-2 w-14 rounded-xl transition-all ${
+            activeTab === 'PLINKO' 
+              ? 'text-amber-400 scale-110 bg-amber-400/10' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <span className="text-lg">🎯</span>
+          <span className="text-[9px] font-heading font-bold">PLINKO</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('VAULT')}
-          className={`flex flex-col items-center gap-1 p-2 w-16 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-1 p-2 w-14 rounded-xl transition-all ${
             activeTab === 'VAULT' 
               ? 'text-emerald-400 scale-110 bg-emerald-500/10' 
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <span className="text-xl">🏦</span>
+          <span className="text-lg">🏦</span>
           <span className="text-[9px] font-heading font-bold">VAULT</span>
-        </button>
-
-        <button
-          onClick={onToggleTrollbox}
-          className={`flex flex-col items-center gap-1 p-2 w-16 rounded-xl transition-all ${
-            isTrollboxOpen 
-              ? 'text-primary scale-110 bg-primary/10' 
-              : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <MessageSquare className="w-5 h-5" />
-          <span className="text-[9px] font-heading font-bold">CHAT</span>
         </button>
       </div>
     </nav>

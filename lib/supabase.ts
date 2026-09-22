@@ -61,11 +61,11 @@ export function computeVIPTier(wagered: number): string {
 
 export function getVIPRakebackRate(vipTier: string): number {
   const tier = (vipTier || 'Bronze').toLowerCase();
-  if (tier === 'diamond') return 0.25; // 25%
-  if (tier === 'platinum') return 0.20; // 20%
-  if (tier === 'gold') return 0.15; // 15%
-  if (tier === 'silver') return 0.125; // 12.5%
-  return 0.10; // 10%
+  if (tier === 'diamond') return 0.15; // 15% (optimized from 25%)
+  if (tier === 'platinum') return 0.12; // 12% (optimized from 20%)
+  if (tier === 'gold') return 0.10; // 10% (optimized from 15%)
+  if (tier === 'silver') return 0.075; // 7.5% (optimized from 12.5%)
+  return 0.05; // 5% (optimized from 10%)
 }
 
 export function calculateDeterministicRakeback(wager: number, houseEdgeMultiplier: number, vipTier: string): number {
