@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 interface DiceCanvasProps {
   isRolling: boolean;
@@ -11,28 +10,20 @@ interface DiceCanvasProps {
   lastWon?: boolean | null;
 }
 
-let cachedDiceGltf: THREE.Group | null = null;
-
 export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }: DiceCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [hasWebGL, setHasWebGL] = useState(true);
-  const [modelSource, setModelSource] = useState<'blender' | 'procedural'>('procedural');
 
-  // Deterministic dice phase without setState in requestAnimationFrame
-  const dicePhase: 'IDLE' | 'KINETIC_TUMBLE' | 'JACKPOT_VICTORY' | 'RAID_OVERLOAD' =
-    isRolling
-      ? 'KINETIC_TUMBLE'
-      : lastWon === true
-      ? 'JACKPOT_VICTORY'
-      : lastWon === false
-      ? 'RAID_OVERLOAD'
-      : 'IDLE';
-
-  // Synchronize mutable refs for 60fps animation loop to prevent WebGL teardown
   const propsRef = useRef({ isRolling, targetRoll, lastRoll, lastWon });
   useEffect(() => {
     propsRef.current = { isRolling, targetRoll, lastRoll, lastWon };
   }, [isRolling, targetRoll, lastRoll, lastWon]);
+
+  const dicePhase: 'IDLE' | 'KINETIC_TUMBLE' | 'JACKPOT_VICTORY' | 'RAID_OVERLOAD' =
+    isRolling ? 'KINETIC_TUMBLE'
+    : lastWon === true ? 'JACKPOT_VICTORY'
+    : lastWon === false ? 'RAID_OVERLOAD'
+    : 'IDLE';
 
   useEffect(() => {
     const currentMount = mountRef.current;
@@ -43,271 +34,312 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
     let handleResize: (() => void) | null = null;
 
     try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) {
-        setHasWebGL(false);
-        return;
-      }
+      const testCanvas = document.createElement('canvas');
+      const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (!gl) { setHasWebGL(false); return; }
 
       const width = currentMount.clientWidth || 340;
-      const height = currentMount.clientHeight || 260;
+      const height = currentMount.clientHeight || 300;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x05070e);
 
-      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-      camera.position.set(0, 2.0, 4.8);
+      const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 200);
+      camera.position.set(0, 1.8, 5.5);
       camera.lookAt(0, 0, 0);
 
-      renderer = new THREE.WebGLRenderer({
-        alpha: true,
-        antialias: true,
-        powerPreference: 'high-performance',
-      });
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
+      renderer.toneMappingExposure = 1.2;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       currentMount.appendChild(renderer.domElement);
 
-      // Studio Cyberpunk Lighting (Key: Gold Amber, Rim: Cyan, Fill: Violet)
-      const ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
-      scene.add(ambientLight);
+      // ── LIGHTING ──────────────────────────────────────────────
+      scene.add(new THREE.AmbientLight(0x0a0a1a, 2.0));
 
-      const goldLight = new THREE.PointLight(0xffb800, 8, 16);
-      goldLight.position.set(3.5, 4.0, 3.5);
-      scene.add(goldLight);
+      const keyLight = new THREE.DirectionalLight(0xffd700, 3.5);
+      keyLight.position.set(4, 6, 4);
+      keyLight.castShadow = true;
+      scene.add(keyLight);
 
-      const purpleLight = new THREE.PointLight(0x8b5cf6, 8, 16);
-      purpleLight.position.set(-3.5, -2.5, -3.0);
-      scene.add(purpleLight);
+      const rimLight = new THREE.PointLight(0x8b5cf6, 12, 18);
+      rimLight.position.set(-4, 1, -3);
+      scene.add(rimLight);
 
-      const statusLight = new THREE.PointLight(0x00f0ff, 6, 14);
-      statusLight.position.set(0, 3.2, -2.2);
+      const statusLight = new THREE.PointLight(0x00f0ff, 8, 14);
+      statusLight.position.set(0, 3, -2);
       scene.add(statusLight);
 
-      // Victory Shockwave Ring
-      const shockwaveGeo = new THREE.RingGeometry(0.5, 0.65, 32);
-      const shockwaveMat = new THREE.MeshBasicMaterial({
-        color: 0x10b981,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0,
-      });
-      const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
-      shockwave.rotation.x = Math.PI / 4;
-      scene.add(shockwave);
+      const fillLight = new THREE.PointLight(0xff6b00, 4, 10);
+      fillLight.position.set(3, -1, 2);
+      scene.add(fillLight);
 
-      // Master Dice Group
+      // ── GRID FLOOR ────────────────────────────────────────────
+      const gridHelper = new THREE.GridHelper(20, 30, 0x1e293b, 0x0f172a);
+      gridHelper.position.y = -1.8;
+      scene.add(gridHelper);
+
+      // Glow plane under dice
+      const glowGeo = new THREE.CircleGeometry(1.6, 64);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        transparent: true,
+        opacity: 0.07,
+        side: THREE.DoubleSide,
+      });
+      const glowPlane = new THREE.Mesh(glowGeo, glowMat);
+      glowPlane.rotation.x = -Math.PI / 2;
+      glowPlane.position.y = -1.79;
+      scene.add(glowPlane);
+
+      // ── DICE BODY ─────────────────────────────────────────────
       const diceGroup = new THREE.Group();
       scene.add(diceGroup);
 
-      // Procedural Fallback Mesh Group
-      const proceduralGroup = new THREE.Group();
-      diceGroup.add(proceduralGroup);
-
-      const size = 1.8;
-      const bodyGeo = new THREE.BoxGeometry(size, size, size, 4, 4, 4);
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x070a12,
-        metalness: 0.95,
-        roughness: 0.14,
+      const size = 1.85;
+      // Use RoundedBox approach via subdivided BoxGeometry + vertex displacement
+      const bodyGeo = new THREE.BoxGeometry(size, size, size, 2, 2, 2);
+      const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: 0x060914,
+        metalness: 0.92,
+        roughness: 0.09,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        reflectivity: 1.0,
+        envMapIntensity: 0.8,
       });
-      const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-      proceduralGroup.add(bodyMesh);
+      const diceMesh = new THREE.Mesh(bodyGeo, bodyMat);
+      diceMesh.castShadow = true;
+      diceGroup.add(diceMesh);
 
-      const edgesGeo = new THREE.EdgesGeometry(bodyGeo, 15);
-      const edgeMat = new THREE.LineBasicMaterial({
-        color: 0x00f0ff,
-        linewidth: 2,
-        transparent: true,
-        opacity: 0.85,
-      });
-      const wireframe = new THREE.LineSegments(edgesGeo, edgeMat);
-      proceduralGroup.add(wireframe);
+      // Glowing edges
+      const edgesGeo = new THREE.EdgesGeometry(bodyGeo, 10);
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.9 });
+      const edges = new THREE.LineSegments(edgesGeo, edgeMat);
+      diceGroup.add(edges);
 
-      const pipGeo = new THREE.SphereGeometry(0.12, 16, 16);
+      // ── PIPS ─────────────────────────────────────────────────
+      const pipGeo = new THREE.SphereGeometry(0.11, 20, 20);
       const pipMat = new THREE.MeshStandardMaterial({
-        color: 0xffb800,
-        emissive: 0xffb800,
-        emissiveIntensity: 0.9,
-        metalness: 0.90,
-        roughness: 0.08,
+        color: 0xffd700,
+        emissive: 0xffd700,
+        emissiveIntensity: 1.2,
+        metalness: 0.9,
+        roughness: 0.05,
+      });
+      const h = size / 2 + 0.025;
+      const o = 0.44;
+      const pips: [number, number, number][] = [
+        [0, 0, h],
+        [-o, o, -h], [o, o, -h], [0, 0, -h], [-o, -o, -h], [o, -o, -h], [o, 0, -h],
+        [-o, h, -o], [o, h, o],
+        [-o, -h, -o], [o, -h, -o], [0, -h, 0], [-o, -h, o], [o, -h, o],
+        [h, -o, -o], [h, 0, 0], [h, o, o],
+        [-h, -o, -o], [-h, o, -o], [-h, -o, o], [-h, o, o],
+      ];
+      pips.forEach(([px, py, pz]) => {
+        const pip = new THREE.Mesh(pipGeo, pipMat);
+        pip.position.set(px, py, pz);
+        diceGroup.add(pip);
       });
 
-      const half = size / 2 + 0.02;
-      const offset = 0.42;
+      // ── SHOCKWAVE RING ────────────────────────────────────────
+      const ringGeo = new THREE.RingGeometry(0.6, 0.75, 48);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = -1.78;
+      scene.add(ring);
 
-      // Face 1: Front (+Z)
-      const p1 = new THREE.Mesh(pipGeo, pipMat);
-      p1.position.set(0, 0, half);
-      proceduralGroup.add(p1);
+      // ── FLOATING PARTICLES ────────────────────────────────────
+      const PARTICLE_COUNT = 120;
+      const particleGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(PARTICLE_COUNT * 3);
+      const particleVelocities: { vx: number; vy: number; vz: number; life: number; maxLife: number }[] = [];
 
-      // Face 6: Back (-Z)
-      [-offset, offset].forEach((x) => {
-        [-offset, 0, offset].forEach((y) => {
-          const p = new THREE.Mesh(pipGeo, pipMat);
-          p.position.set(x, y, -half);
-          proceduralGroup.add(p);
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 8;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 5;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 8;
+        particleVelocities.push({
+          vx: (Math.random() - 0.5) * 0.01,
+          vy: Math.random() * 0.005 + 0.002,
+          vz: (Math.random() - 0.5) * 0.01,
+          life: Math.random(),
+          maxLife: 0.8 + Math.random() * 0.8,
         });
-      });
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const particleMat = new THREE.PointsMaterial({ color: 0xffd700, size: 0.045, transparent: true, opacity: 0.55, sizeAttenuation: true });
+      const particles = new THREE.Points(particleGeo, particleMat);
+      scene.add(particles);
 
-      // Face 2: Top (+Y)
-      const p2a = new THREE.Mesh(pipGeo, pipMat);
-      p2a.position.set(-offset, half, -offset);
-      const p2b = new THREE.Mesh(pipGeo, pipMat);
-      p2b.position.set(offset, half, offset);
-      proceduralGroup.add(p2a, p2b);
+      // ── WIN BURST PARTICLES ───────────────────────────────────
+      const BURST_COUNT = 80;
+      const burstGeo = new THREE.BufferGeometry();
+      const burstPositions = new Float32Array(BURST_COUNT * 3);
+      burstGeo.setAttribute('position', new THREE.BufferAttribute(burstPositions, 3));
+      const burstMat = new THREE.PointsMaterial({ color: 0x10b981, size: 0.07, transparent: true, opacity: 0 });
+      const burst = new THREE.Points(burstGeo, burstMat);
+      scene.add(burst);
 
-      // Face 5: Bottom (-Y)
-      [[-offset, -offset], [offset, -offset], [0, 0], [-offset, offset], [offset, offset]].forEach(([x, z]) => {
-        const p = new THREE.Mesh(pipGeo, pipMat);
-        p.position.set(x, -half, z);
-        proceduralGroup.add(p);
-      });
+      type BurstParticle = { vx: number; vy: number; vz: number; active: boolean };
+      const burstVelocities: BurstParticle[] = Array.from({ length: BURST_COUNT }, () => ({ vx: 0, vy: 0, vz: 0, active: false }));
+      let burstActive = false;
 
-      // Face 3: Right (+X)
-      [[-offset, -offset], [0, 0], [offset, offset]].forEach(([y, z]) => {
-        const p = new THREE.Mesh(pipGeo, pipMat);
-        p.position.set(half, y, z);
-        proceduralGroup.add(p);
-      });
-
-      // Face 4: Left (-X)
-      [[-offset, -offset], [offset, -offset], [-offset, offset], [offset, offset]].forEach(([y, z]) => {
-        const p = new THREE.Mesh(pipGeo, pipMat);
-        p.position.set(-half, y, z);
-        proceduralGroup.add(p);
-      });
-
-      // Load Master Blender GLB Model
-      const attachBlenderModel = (clonedScene: THREE.Group) => {
-        // Scale adjustment for web
-        clonedScene.scale.set(1.1, 1.1, 1.1);
-        
-        // Generate native WebGL materials
-        const diceMaterial = new THREE.MeshPhysicalMaterial({
-          color: 0xcc0011, // Solid rich casino red
-          metalness: 0.15,
-          roughness: 0.10, // Glossy plastic/resin look
-          clearcoat: 1.0,  // Glazed corners
-          clearcoatRoughness: 0.2,
-          sheen: 1.0,
-          sheenColor: new THREE.Color(0xffd700), // Light gold glaze
-        });
-        
-        const pipMaterial = new THREE.MeshStandardMaterial({
-          color: 0xffffff, // Normal white dots (no extreme emissive/glaze)
-          roughness: 0.5,
-          metalness: 0.0
-        });
-
-        clonedScene.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const m = child as THREE.Mesh;
-            m.castShadow = true;
-            m.receiveShadow = true;
-            
-            // Foolproof mesh identification
-            if (m.name.includes("Cube")) {
-                m.material = diceMaterial;
-            } else if (m.name.includes("Cylinder")) {
-                m.material = pipMaterial;
-            }
-          }
-        });
-        
-        // Mathematically center the imported model to fix any rotation axis wobbling
-        const box = new THREE.Box3().setFromObject(clonedScene);
-        const center = box.getCenter(new THREE.Vector3());
-        clonedScene.position.sub(center);
-
-        diceGroup.remove(proceduralGroup);
-        diceGroup.add(clonedScene);
-        setModelSource('blender');
+      const triggerBurst = (color: number) => {
+        burstMat.color.setHex(color);
+        burstMat.opacity = 1.0;
+        burstActive = true;
+        const bp = burstGeo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < BURST_COUNT; i++) {
+          bp.setXYZ(i, 0, 0, 0);
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.random() * Math.PI;
+          const speed = 0.05 + Math.random() * 0.1;
+          burstVelocities[i] = {
+            vx: Math.sin(phi) * Math.cos(theta) * speed,
+            vy: Math.sin(phi) * Math.sin(theta) * speed,
+            vz: Math.cos(phi) * speed,
+            active: true,
+          };
+        }
+        bp.needsUpdate = true;
       };
 
-      if (cachedDiceGltf) {
-        attachBlenderModel(cachedDiceGltf.clone());
-      } else {
-        const loader = new GLTFLoader();
-        loader.load(
-          '/assets/3d/dice_v3.glb?v=' + Date.now(),
-          (gltf) => {
-            cachedDiceGltf = gltf.scene;
-            attachBlenderModel(gltf.scene.clone());
-          },
-          undefined,
-          (err) => console.warn('GLB dice fallback:', err)
-        );
-      }
-
-      diceGroup.rotation.x = 0.45;
-      diceGroup.rotation.y = 0.65;
-      diceGroup.rotation.z = 0.15;
-
+      // ── ANIMATION VARIABLES ───────────────────────────────────
+      let vx = 0.006, vy = 0.009, vz = 0.004;
       let waveScale = 0.1;
-      
-      // Momentum variables for smooth transition
-      let velocityX = 0.006;
-      let velocityY = 0.009;
-      let velocityZ = 0.004;
+      let prevRolling = false;
+      let prevWon: boolean | null = null;
+      let t = 0;
 
       const animate = () => {
         animationId = requestAnimationFrame(animate);
+        t += 0.016;
 
-        const { isRolling: curRolling, lastWon: curWon } = propsRef.current;
+        const { isRolling: rolling, lastWon: won } = propsRef.current;
 
-        // Determine target velocities based on mathematical game state
-        let targetVx, targetVy, targetVz;
+        // Detect transitions for burst trigger
+        if (!rolling && prevRolling) {
+          if (won === true) triggerBurst(0x10b981);
+          else if (won === false) triggerBurst(0xef4444);
+        }
+        prevRolling = rolling;
 
-        if (curRolling) {
-          targetVx = 0.35;
-          targetVy = 0.42;
-          targetVz = 0.25;
-
+        // Target velocities
+        let tvx: number, tvy: number, tvz: number;
+        if (rolling) {
+          tvx = 0.38; tvy = 0.45; tvz = 0.28;
           edgeMat.color.setHex(0xffb800);
           statusLight.color.setHex(0xffb800);
-          shockwaveMat.opacity = 0;
+          glowMat.color.setHex(0xffb800);
+          glowMat.opacity = 0.15;
+          pipMat.emissive.setHex(0xffb800);
+          pipMat.color.setHex(0xffb800);
+          ringMat.opacity = 0;
           waveScale = 0.1;
+          particleMat.color.setHex(0xffb800);
+        } else if (won === true) {
+          tvx = 0.003; tvy = 0.004; tvz = 0.001;
+          edgeMat.color.setHex(0x10b981);
+          statusLight.color.setHex(0x10b981);
+          glowMat.color.setHex(0x10b981);
+          glowMat.opacity = 0.18;
+          pipMat.emissive.setHex(0x10b981);
+          pipMat.color.setHex(0x10b981);
+          waveScale += 0.06;
+          ring.scale.set(waveScale, waveScale, waveScale);
+          ringMat.opacity = Math.max(0, 1.0 - waveScale / 5.0);
+          particleMat.color.setHex(0x10b981);
+        } else if (won === false) {
+          tvx = 0.004; tvy = 0.005; tvz = 0.001;
+          edgeMat.color.setHex(0xef4444);
+          statusLight.color.setHex(0xef4444);
+          glowMat.color.setHex(0xef4444);
+          glowMat.opacity = 0.1;
+          pipMat.emissive.setHex(0xff4444);
+          pipMat.color.setHex(0xff4444);
+          ringMat.opacity = 0;
+          particleMat.color.setHex(0xef4444);
         } else {
-          // Idle or Outcome states
-          targetVx = curWon === true ? 0.003 : curWon === false ? 0.004 : 0.006;
-          targetVy = curWon === true ? 0.004 : curWon === false ? 0.005 : 0.009;
-          targetVz = curWon === true ? 0.001 : curWon === false ? 0.001 : 0.004;
+          tvx = 0.006; tvy = 0.009; tvz = 0.004;
+          edgeMat.color.setHex(0x00f0ff);
+          statusLight.color.setHex(0x00f0ff);
+          glowMat.color.setHex(0x00f0ff);
+          glowMat.opacity = 0.07;
+          pipMat.emissive.setHex(0xffd700);
+          pipMat.color.setHex(0xffd700);
+          ringMat.opacity = 0;
+          particleMat.color.setHex(0xffd700);
+        }
 
-          if (curWon === true) {
-            edgeMat.color.setHex(0x10b981);
-            statusLight.color.setHex(0x10b981);
+        vx += (tvx - vx) * 0.06;
+        vy += (tvy - vy) * 0.06;
+        vz += (tvz - vz) * 0.06;
 
-            waveScale += 0.08;
-            shockwave.scale.set(waveScale, waveScale, waveScale);
-            shockwaveMat.opacity = Math.max(0, 1.0 - waveScale / 4.0);
-          } else if (curWon === false) {
-            edgeMat.color.setHex(0xef4444);
-            statusLight.color.setHex(0xef4444);
-            shockwaveMat.opacity = 0;
+        diceGroup.rotation.x += vx;
+        diceGroup.rotation.y += vy;
+        diceGroup.rotation.z += vz;
+
+        // Subtle hover bob
+        diceGroup.position.y = Math.sin(t * 1.2) * 0.08;
+
+        // Animate floating ambient particles
+        const posAttr = particleGeo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          const pv = particleVelocities[i];
+          pv.life += 0.008;
+          if (pv.life > pv.maxLife) {
+            posAttr.setXYZ(i,
+              (Math.random() - 0.5) * 8,
+              -2.5,
+              (Math.random() - 0.5) * 8
+            );
+            pv.life = 0;
           } else {
-            edgeMat.color.setHex(0x00f0ff);
-            statusLight.color.setHex(0x00f0ff);
-            shockwaveMat.opacity = 0;
+            posAttr.setXYZ(i,
+              posAttr.getX(i) + pv.vx,
+              posAttr.getY(i) + pv.vy,
+              posAttr.getZ(i) + pv.vz,
+            );
+          }
+        }
+        posAttr.needsUpdate = true;
+
+        // Animate burst particles
+        if (burstActive) {
+          const bp = burstGeo.attributes.position as THREE.BufferAttribute;
+          let anyActive = false;
+          for (let i = 0; i < BURST_COUNT; i++) {
+            const bv = burstVelocities[i];
+            if (bv.active) {
+              bp.setXYZ(i, bp.getX(i) + bv.vx, bp.getY(i) + bv.vy, bp.getZ(i) + bv.vz);
+              bv.vy -= 0.003; // gravity
+              anyActive = true;
+            }
+          }
+          bp.needsUpdate = true;
+          burstMat.opacity = Math.max(0, burstMat.opacity - 0.018);
+          if (burstMat.opacity <= 0) {
+            burstActive = false;
+            burstMat.opacity = 0;
           }
         }
 
-        // Smooth linear interpolation (lerp) for natural physics transition
-        velocityX += (targetVx - velocityX) * 0.05;
-        velocityY += (targetVy - velocityY) * 0.05;
-        velocityZ += (targetVz - velocityZ) * 0.05;
-
-        diceGroup.rotation.x += velocityX;
-        diceGroup.rotation.y += velocityY;
-        diceGroup.rotation.z += velocityZ;
-
-        if (renderer) {
-          renderer.render(scene, camera);
+        // Pulsing emissive intensity
+        if (rolling) {
+          pipMat.emissiveIntensity = 1.5 + Math.sin(t * 15) * 0.5;
+        } else if (won === true) {
+          pipMat.emissiveIntensity = 1.4 + Math.sin(t * 6) * 0.6;
+        } else {
+          pipMat.emissiveIntensity = 1.1 + Math.sin(t * 2) * 0.15;
         }
+
+        renderer!.render(scene, camera);
       };
 
       animate();
@@ -315,17 +347,16 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       handleResize = () => {
         if (!currentMount || !renderer) return;
         const newW = currentMount.clientWidth || 340;
-        const newH = currentMount.clientHeight || 260;
+        const newH = currentMount.clientHeight || 300;
         camera.aspect = newW / newH;
         camera.updateProjectionMatrix();
         renderer.setSize(newW, newH);
       };
-
       window.addEventListener('resize', handleResize);
+
     } catch (err) {
-      console.warn('WebGL sandbox:', err);
+      console.warn('WebGL init error:', err);
       setHasWebGL(false);
-      return;
     }
 
     return () => {
@@ -334,46 +365,27 @@ export default function DiceCanvas({ isRolling, targetRoll, lastRoll, lastWon }:
       if (renderer && renderer.domElement && currentMount && currentMount.contains(renderer.domElement)) {
         currentMount.removeChild(renderer.domElement);
       }
-      if (renderer) renderer.dispose();
+      renderer?.dispose();
     };
   }, []);
 
-  // Tor Safe 2D Fallback
   if (!hasWebGL) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-950/90 rounded-2xl border border-amber-500/20 p-6 text-center min-h-[260px] relative overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(245,158,11,0.05)_50%,transparent_100%)] animate-pulse pointer-events-none" />
-
-        <div className={`relative w-28 h-28 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center mb-4 ${
-          isRolling
-            ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_30px_rgba(245,158,11,0.4)] rotate-45'
-            : lastWon === true
-            ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.4)]'
-            : lastWon === false
-            ? 'border-rose-500 bg-rose-500/10 shadow-[0_0_30px_rgba(239,68,68,0.4)]'
-            : 'border-cyan-500/40 bg-slate-900 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
+      <div className="flex flex-col items-center justify-center h-full w-full bg-slate-950/90 rounded-2xl border border-cyan-500/20 p-6 text-center min-h-[300px]">
+        <div className={`w-28 h-28 rounded-2xl border-2 flex items-center justify-center mb-4 transition-all ${
+          isRolling ? 'border-amber-400 animate-spin' : lastWon === true ? 'border-emerald-400' : lastWon === false ? 'border-rose-500' : 'border-cyan-500/40'
         }`}>
           <div className="text-4xl font-mono font-black text-white">
-            {isRolling ? '...' : typeof lastRoll === 'number' ? lastRoll.toFixed(2) : (targetRoll ?? 50.0).toFixed(0)}
+            {isRolling ? '⚡' : typeof lastRoll === 'number' ? lastRoll.toFixed(2) : '🎲'}
           </div>
-          <span className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-amber-400 rounded-sm" />
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-sm" />
-          <span className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-purple-400 rounded-sm" />
-          <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-sm" />
         </div>
-
-        <div className="text-primary font-mono text-lg font-bold tracking-wider mb-1">
-          {isRolling ? 'CRYPTOGRAPHIC ROLL IN PROGRESS...' : `TARGET: ${targetRoll ?? 50.0}`}
-        </div>
-        <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest bg-slate-900 px-3 py-1 rounded-full border border-emerald-500/30">
-          Tor Stealth Mode • Phase: {dicePhase}
-        </span>
+        <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">Phase: {dicePhase}</span>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full min-h-[260px]">
+    <div className="relative w-full h-full min-h-[300px]">
       <div ref={mountRef} className="w-full h-full" />
     </div>
   );
