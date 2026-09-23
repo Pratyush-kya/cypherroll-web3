@@ -45,7 +45,7 @@ export function screenWalletAddress(walletAddress: string): AMLScreeningResult {
   const auditId = `aml_${crypto.randomBytes(8).toString('hex')}`;
   const now = new Date().toISOString();
 
-  // 1. Direct OFAC registry lookup
+  // 1. Direct OFAC registry lookup (exact match)
   const directMatch = SANCTIONED_REGISTRY[normalized];
   if (directMatch) {
     return {
@@ -64,13 +64,61 @@ export function screenWalletAddress(walletAddress: string): AMLScreeningResult {
   const flags: string[] = [];
   let riskScore = 5; // Baseline low risk
 
-  // Check for suspicious vanity or null addresses
+  // — Zero / burn address
   if (normalized === '0x0000000000000000000000000000000000000000') {
-    flags.push('ZERO_ADDRESS');
-    riskScore = 100;
+    flags.push('EVM_ZERO_ADDRESS'); riskScore = 100;
   }
 
-  // Determine action based on aggregated risk score
+  // — Solana system program (also effectively a burn)
+  if (normalized === '11111111111111111111111111111111') {
+    flags.push('SOLANA_SYSTEM_PROGRAM'); riskScore = 100;
+  }
+
+  // — Suspiciously short address (likely truncated / invalid)
+  if (walletAddress.length < 32) {
+    flags.push('INVALID_ADDRESS_LENGTH'); riskScore = Math.max(riskScore, 70);
+  }
+
+  // — EVM dead address variants
+  if (/^0x(dead|0+dead|f+)$/i.test(normalized)) {
+    flags.push('EVM_DEAD_ADDRESS'); riskScore = Math.max(riskScore, 90);
+  }
+
+  // — High byte repetition: potential vanity/brute-forced mixer address
+  // e.g. 0xaaaa...aaaa or 0x1234123412341234...
+  const hexBody = normalized.replace(/^0x/, '').replace(/[^a-f0-9]/g, '');
+  if (hexBody.length >= 32) {
+    // Check for ≥60% same character (vanity spam)
+    const charCounts: Record<string, number> = {};
+    for (const c of hexBody) charCounts[c] = (charCounts[c] || 0) + 1;
+    const maxRepeat = Math.max(...Object.values(charCounts));
+    if (maxRepeat / hexBody.length >= 0.6) {
+      flags.push('HIGH_CHARACTER_REPETITION_VANITY'); riskScore = Math.max(riskScore, 65);
+    }
+
+    // Check for repeating 4-byte pattern (typical of mixer contract addresses)
+    const chunk = hexBody.substring(0, 8);
+    const repeated = chunk.repeat(Math.floor(hexBody.length / 8));
+    if (hexBody.startsWith(repeated) && repeated.length >= 24) {
+      flags.push('REPEATING_BYTE_PATTERN_MIXER'); riskScore = Math.max(riskScore, 75);
+    }
+  }
+
+  // — Demo/internal wallet prefix — always allow, no risk
+  if (normalized.startsWith('demo_') || normalized.startsWith('demo_anon_')) {
+    return {
+      wallet: walletAddress,
+      isSanctioned: false,
+      riskScore: 0,
+      riskLevel: 'LOW',
+      flags: ['DEMO_MODE_WALLET'],
+      action: 'ALLOW',
+      screenedAt: now,
+      auditId,
+    };
+  }
+
+  // 3. Determine action based on aggregated risk score
   let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
   let action: 'ALLOW' | 'FLAG_FOR_REVIEW' | 'QUARANTINE_DEPOSIT' = 'ALLOW';
 
@@ -82,12 +130,13 @@ export function screenWalletAddress(walletAddress: string): AMLScreeningResult {
     action = 'FLAG_FOR_REVIEW';
   } else if (riskScore >= 30) {
     riskLevel = 'MEDIUM';
-    action = 'ALLOW';
+    // FIX: MEDIUM risk should be flagged, not silently allowed
+    action = 'FLAG_FOR_REVIEW';
   }
 
   return {
     wallet: walletAddress,
-    isSanctioned: false,
+    isSanctioned: riskScore >= 90,
     riskScore,
     riskLevel,
     flags,

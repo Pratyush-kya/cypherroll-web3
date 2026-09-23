@@ -4,11 +4,16 @@ import { getOrCreatePlayer, recordAtomicBet, broadcastLiveBet, calculateDetermin
 import { calculateDiceRoll, getDiceMultiplier } from '@/lib/provably-fair';
 import { verifySession } from '@/lib/auth';
 import { adminControlsState } from '@/lib/admin-controls-state';
+import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Origin + rate-limit guard (60 dice rolls/min per IP)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 60, blockMs: 30_000 });
+    if (guard) return guard;
+
     // Maintenance Circuit Breaker Guard
     if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('DICE')) {
       return NextResponse.json({

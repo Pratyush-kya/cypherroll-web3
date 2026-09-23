@@ -1,6 +1,7 @@
 import { calculateCrashPoint, generateServerSeed } from '@/lib/provably-fair';
 import { settleCrashCashout, settleCrashBust, broadcastLiveBet, recordCrashRound, calculateDeterministicRakeback, getOrCreatePlayer } from '@/lib/supabase';
 import { distributedState } from '@/lib/distributed-state';
+import nodeCrypto from 'crypto';
 
 export interface CrashPlayerBet {
   wallet: string;
@@ -41,7 +42,9 @@ class CrashEngine {
   private crashedAt: number = 0;
   private serverSeed: string = '';
   private serverSeedHash: string = '';
-  private clientSeed: string = 'global_crash_seed_1';
+  // FIX: Per-round random client seed (was hardcoded 'global_crash_seed_1')
+  // Rotated every round to restore provably-fair guarantee for crash.
+  private clientSeed: string = nodeCrypto.randomBytes(32).toString('hex');
   private nonce: number = 1;
   private bets: Map<string, CrashPlayerBet> = new Map();
   private history: number[] = [];
@@ -96,6 +99,9 @@ class CrashEngine {
     this.countdown = 5.0;
     this.crashedAt = 0;
     this.bets.clear();
+
+    // FIX: Rotate client seed every round for true provably-fair crash
+    this.clientSeed = nodeCrypto.randomBytes(32).toString('hex');
 
     // Calculate deterministic crash point for the round upfront
     this.crashPoint = calculateCrashPoint(this.serverSeed, this.clientSeed, this.nonce);

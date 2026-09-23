@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server';
 import { crashEngine } from '@/lib/crash-engine';
 import { verifySession } from '@/lib/auth';
+import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Origin + rate-limit guard (120 cashouts/min — needs to be responsive)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 120, blockMs: 10_000 });
+    if (guard) return guard;
+
     const body = await req.json();
     const { walletAddress, isDemo, clientMultiplier, clientTimestamp } = body;
 
-    // Handle Demo Mode
+    // Handle Demo Mode — FIX: use full wallet ID consistent with bet route
     if (isDemo) {
-      const demoWallet = 'demo_' + (walletAddress ? walletAddress.substring(0, 6) : 'player');
-      const result = await crashEngine.cashOut(demoWallet, clientMultiplier, clientTimestamp);
+      const demoId = walletAddress
+        ? `demo_${walletAddress.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}`
+        : `demo_anon_unknown`;
+      const result = await crashEngine.cashOut(demoId, clientMultiplier, clientTimestamp);
       if (!result.success) {
         return NextResponse.json({ error: result.error }, { status: 400 });
       }

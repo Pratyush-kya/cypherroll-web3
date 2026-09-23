@@ -5,11 +5,16 @@ import { calculateMinePositions, generateServerSeed } from '@/lib/provably-fair'
 import { verifySession } from '@/lib/auth';
 import { adminControlsState } from '@/lib/admin-controls-state';
 import { activeMinesGames } from '@/lib/mines-state';
+import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Origin + rate-limit guard (30 starts/min per IP)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 30, blockMs: 30_000 });
+    if (guard) return guard;
+
     if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('MINES')) {
       return NextResponse.json({
         error: 'Mines wagering is currently paused by the operator for maintenance.',

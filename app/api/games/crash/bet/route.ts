@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { crashEngine } from '@/lib/crash-engine';
 import { lockPlayerWager, refundPlayerWager } from '@/lib/supabase';
 import { verifySession } from '@/lib/auth';
 import { adminControlsState } from '@/lib/admin-controls-state';
+import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Origin + rate-limit guard (30 crash bets/min per IP)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 30, blockMs: 30_000 });
+    if (guard) return guard;
     // Maintenance Circuit Breaker Guard
     if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('CRASH')) {
       return NextResponse.json({
@@ -32,16 +37,20 @@ export async function POST(req: Request) {
     }
 
     // Handle Demo Mode (virtual play without DB balance locks)
+    // FIX: Use full wallet address (not first 6 chars) to prevent identity collision
+    // between different wallets sharing the same prefix.
     if (isDemo) {
-      const demoWallet = 'demo_' + (walletAddress ? walletAddress.substring(0, 6) : 'player');
-      const result = await crashEngine.placeBet(demoWallet, wager, parsedAutoCashout);
+      const demoId = walletAddress
+        ? `demo_${walletAddress.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}`
+        : `demo_anon_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`;
+      const result = await crashEngine.placeBet(demoId, wager, parsedAutoCashout);
       if (!result.success) {
         return NextResponse.json({ error: result.error }, { status: 400 });
       }
       return NextResponse.json({
         success: true,
         isDemo: true,
-        wallet: demoWallet,
+        wallet: demoId,
         wager,
         autoCashout: parsedAutoCashout,
       });

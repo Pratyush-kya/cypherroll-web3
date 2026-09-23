@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import { getMinesMultiplier } from '@/lib/provably-fair';
 import { activeMinesGames } from '@/lib/mines-state';
 import { recordAtomicBet, broadcastLiveBet, calculateDeterministicRakeback, getOrCreatePlayer, refundPlayerWager } from '@/lib/supabase';
+import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Origin + rate-limit guard (60 cashouts/min)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 60, blockMs: 15_000 });
+    if (guard) return guard;
+
     const body = await req.json();
     const { walletAddress, gameId } = body;
 
