@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import MinesCanvas from '@/components/3d/MinesCanvas';
 import { getMinesMultiplier } from '@/lib/provably-fair';
-import { ShieldCheck, Bomb, Gem, History } from 'lucide-react';
+import { ShieldCheck, Bomb, Gem, Sparkles, Flame, Trophy, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import ProvablyFairModal from './ProvablyFairModal';
 
 interface MinesHistoryItem {
@@ -26,6 +26,14 @@ interface MinesGameProps {
   onBetPlaced?: (rakeback: number, vip: string) => void;
   isDemoMode?: boolean;
 }
+
+const MINE_PRESETS = [
+  { count: 1, label: '1 Mine', risk: '96% Safe' },
+  { count: 3, label: '3 Mines', risk: 'Standard' },
+  { count: 5, label: '5 Mines', risk: 'Spicy' },
+  { count: 10, label: '10 Mines', risk: 'High Risk' },
+  { count: 24, label: '24 Mines', risk: '24.5× Jackpot' },
+];
 
 export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced, isDemoMode }: MinesGameProps) {
   const [mineCount, setMineCount] = useState<number>(3);
@@ -50,8 +58,17 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
     nonce?: number;
   }>({});
 
+  // View mode: '3D' or '2D' or 'HYBRID'
+  const [viewMode, setViewMode] = useState<'GRID' | '3D'>('GRID');
+
+  // Stats
+  const [streak, setStreak] = useState(0);
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [totalWagered, setTotalWagered] = useState(0);
+
   const potentialProfit = parseFloat(((wager * currentMultiplier) - wager).toFixed(2));
   const nextMultiplier = getMinesMultiplier(mineCount, revealedTiles.length + 1);
+  const safeTilesRemaining = 25 - mineCount - revealedTiles.length;
 
   const handleStart = async () => {
     if (wager <= 0 || wager > balance || gameActive) return;
@@ -84,6 +101,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
       setGameId(data.gameId);
       if (data.serverSeedHash) setServerSeedHash(data.serverSeedHash);
       setGameActive(true);
+      setTotalWagered(prev => parseFloat((prev + wager).toFixed(2)));
     } catch (err: any) {
       alert(err.message || "Failed to start game");
     }
@@ -111,12 +129,14 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         // Boom! Game Over
         setGameActive(false);
         setLastWon(false);
-        setMinePositions(data.minePositions);
+        setMinePositions(data.minePositions || [index]);
         
         if (data.newBalance !== undefined) setBalance(data.newBalance);
         if (data.newNonce) setNonce(data.newNonce);
         if (onBetPlaced && !isDemoMode) onBetPlaced(data.rakeback, data.vipTier);
 
+        setStreak(prev => (prev <= 0 ? prev - 1 : -1));
+        setTotalProfit(prev => parseFloat((prev - wager).toFixed(2)));
         addToHistory(false, 0, -wager);
       } else {
         // Gem found
@@ -143,6 +163,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         body: JSON.stringify({
           walletAddress: userWallet || (isDemoMode ? 'Demo_Player' : ''),
           gameId,
+          isDemo: Boolean(isDemoMode),
         }),
       });
 
@@ -151,7 +172,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
 
       setGameActive(false);
       setLastWon(true);
-      setMinePositions(data.minePositions);
+      setMinePositions(data.minePositions || []);
       
       if (isDemoMode) {
         setBalance(prev => parseFloat((prev + data.payout).toFixed(2)));
@@ -162,13 +183,15 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
       if (data.newNonce) setNonce(data.newNonce);
       if (onBetPlaced && !isDemoMode) onBetPlaced(data.rakeback, data.vipTier);
 
+      setStreak(prev => (prev >= 0 ? prev + 1 : 1));
+      setTotalProfit(prev => parseFloat((prev + data.profit).toFixed(2)));
       addToHistory(true, data.multiplier, data.profit);
     } catch (err: any) {
       alert(err.message || "Cashout failed");
     }
   };
 
-  const addToHistory = (won: boolean, multiplier: number, profit: number) => {
+  const addToHistory = (won: boolean, mult: number, profit: number) => {
     setHistory((prev) => [
       {
         id: Math.random().toString(36).substring(7),
@@ -176,7 +199,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         wager,
         profit,
         won,
-        multiplier,
+        multiplier: mult,
         serverSeed: '', 
         serverSeedHash,
         clientSeed,
@@ -196,206 +219,330 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
     setIsAuditorOpen(true);
   };
 
+  // Precompute next 5 ladder steps
+  const ladderSteps = [1, 2, 3, 4, 5].map(step => {
+    const gemCount = revealedTiles.length + step;
+    return {
+      step: gemCount,
+      mult: getMinesMultiplier(mineCount, gemCount),
+      isNext: step === 1,
+    };
+  }).filter(s => s.mult > 0);
+
   return (
-    <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* 3D Game Stage (Left 7 Cols) */}
-      <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[480px]">
-        {/* Top Badges */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-2">
-          <div className="flex items-center gap-2">
-            <Bomb className="w-5 h-5 text-primary" />
-            <span className="font-heading text-sm font-bold text-foreground">CypherMines 3D</span>
-            <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-              98.0% RTP (2% Edge)
-            </span>
-          </div>
-
-          <button
-            onClick={() => setIsAuditorOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-primary transition-colors bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-            <span>Audit</span>
-          </button>
-        </div>
-
-        {/* 3D WebGL Canvas */}
-        <div className="relative flex-1 flex items-center justify-center my-2">
-          <MinesCanvas
-            gameActive={gameActive}
-            revealedTiles={revealedTiles}
-            minePositions={minePositions}
-            onTileClick={handleTileClick}
-          />
-          
-          {/* Game Over Overlay */}
-          {!gameActive && lastWon !== null && (
-            <div
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-2xl border backdrop-blur-md transition-all animate-in zoom-in-75 duration-200 pointer-events-none ${
-                lastWon
-                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 shadow-xl shadow-emerald-500/20'
-                  : 'bg-rose-950/80 border-rose-500 text-rose-400 shadow-xl shadow-rose-500/20'
-              }`}
-            >
-              <div className="text-[11px] font-mono uppercase text-center tracking-wider">
-                {lastWon ? 'WINNER!' : 'BUSTED'}
-              </div>
-              <div className="text-4xl font-heading font-black tracking-tight text-center">
-                {lastWon ? `${currentMultiplier}x` : '0x'}
-              </div>
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-5">
+      {/* ── TOP STATS BAR ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Mines / Safe', value: `${mineCount} 💣 / ${25 - mineCount} 💎`, icon: <Bomb className="w-4 h-4" />, color: 'text-amber-400' },
+          { label: 'Current Multiplier', value: `${currentMultiplier}×`, icon: <Sparkles className="w-4 h-4" />, color: 'text-emerald-400' },
+          { label: 'Safe Remaining', value: gameActive ? `${safeTilesRemaining}` : `${25 - mineCount}`, icon: <Gem className="w-4 h-4" />, color: 'text-cyan-400' },
+          { label: 'Session P&L', value: `${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}`, icon: totalProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />, color: totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400' },
+        ].map(({ label, value, icon, color }) => (
+          <div key={label} className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+            <span className={`${color} opacity-80`}>{icon}</span>
+            <div>
+              <div className="text-[10px] font-mono text-slate-500 uppercase">{label}</div>
+              <div className={`font-heading font-bold text-sm ${color}`}>{value}</div>
             </div>
-          )}
-        </div>
-
-        {/* Mine Count Selector (Only when not active) */}
-        {!gameActive && (
-          <div className="mt-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
-            <div className="flex justify-between items-center text-xs font-mono mb-2">
-              <span className="text-slate-400">Mines: <strong className="text-primary font-bold">{mineCount}</strong></span>
-              <span className="text-slate-400">Safe Tiles: <strong className="text-emerald-400 font-bold">{25 - mineCount}</strong></span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="24"
-              step="1"
-              value={mineCount}
-              onChange={(e) => setMineCount(parseInt(e.target.value))}
-              className="w-full h-3 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
-            />
           </div>
-        )}
-
-        {/* Seed Pre-commitment Hash Display */}
-        <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-500 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
-          <span className="truncate max-w-[280px]">
-            Server Hash: {serverSeedHash.substring(0, 16)}...
-          </span>
-          <span className="text-primary">Nonce #{nonce}</span>
-        </div>
+        ))}
       </div>
 
-      {/* Betting Dashboard (Right 5 Cols) */}
-      <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[480px]">
-        <div>
-          {/* Balance Widget */}
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-5 flex items-center justify-between">
-            <span className="text-xs font-mono text-slate-400">Player Bankroll</span>
-            <div className="text-right">
-              <span className="text-xl font-heading font-black text-primary">
-                ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      {/* ── MAIN GAME GRID ────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Stage (7 cols) */}
+        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[520px]">
+          {/* Top Stage Header */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+            <div className="flex items-center gap-2">
+              <Gem className="w-5 h-5 text-emerald-400" />
+              <span className="font-heading text-sm font-bold text-foreground">CypherMines</span>
+              <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                98.0% RTP (2% Edge)
               </span>
-              <span className="text-[10px] block font-mono text-emerald-400">Server-Authoritative</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px] font-mono">
+                <button
+                  onClick={() => setViewMode('GRID')}
+                  className={`px-2 py-0.5 rounded font-bold ${viewMode === 'GRID' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}
+                >
+                  Tactical
+                </button>
+                <button
+                  onClick={() => setViewMode('3D')}
+                  className={`px-2 py-0.5 rounded font-bold ${viewMode === '3D' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}
+                >
+                  3D View
+                </button>
+              </div>
+
+              <button
+                onClick={() => setIsAuditorOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-primary transition-colors bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                <span>Audit</span>
+              </button>
             </div>
           </div>
 
-          {/* Wager Input */}
-          <div className="mb-4">
-            <label className="block text-xs font-mono text-slate-400 mb-1.5">Wager Amount ($)</label>
-            <div className="relative">
-              <input
-                type="number"
-                min="1"
-                max={balance}
-                value={wager}
-                disabled={gameActive}
-                onChange={(e) => setWager(Math.max(1, parseFloat(e.target.value) || 1))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-base font-heading font-bold text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
+          {/* Multiplier Step Ladder (Live when in game) */}
+          {gameActive && ladderSteps.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-none">
+              <span className="text-[10px] font-mono text-slate-500 shrink-0 uppercase">Next Steps:</span>
+              {ladderSteps.map((step) => (
+                <div
+                  key={step.step}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold shrink-0 border transition-all ${
+                    step.isNext
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 shadow-md shadow-emerald-500/20 scale-105'
+                      : 'bg-slate-950/60 text-slate-400 border-slate-800'
+                  }`}
+                >
+                  {step.mult}×
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Game Stage (3D Canvas or Tactical 5x5 Cyber Grid) */}
+          <div className="relative flex-1 flex items-center justify-center my-2 min-h-[320px]">
+            {viewMode === '3D' ? (
+              <MinesCanvas
+                gameActive={gameActive}
+                revealedTiles={revealedTiles}
+                minePositions={minePositions}
+                onTileClick={handleTileClick}
               />
+            ) : (
+              /* Tactical 5x5 Cyber Grid */
+              <div className="w-full max-w-[340px] sm:max-w-[380px] aspect-square grid grid-cols-5 gap-2 p-2 bg-slate-950/80 rounded-2xl border border-slate-800/80 shadow-inner">
+                {Array.from({ length: 25 }, (_, i) => {
+                  const isRevealed = revealedTiles.includes(i);
+                  const isMine = minePositions.includes(i);
+                  const isGameOver = !gameActive && minePositions.length > 0;
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handleTileClick(i)}
+                      disabled={!gameActive || isRevealed}
+                      className={`relative rounded-xl border font-mono font-bold transition-all duration-200 flex items-center justify-center aspect-square text-lg select-none ${
+                        isRevealed
+                          ? 'bg-emerald-950/90 border-emerald-500/80 text-emerald-300 shadow-lg shadow-emerald-500/30 scale-[0.98]'
+                          : isGameOver && isMine
+                          ? 'bg-rose-950/90 border-rose-500 text-rose-400 shadow-lg shadow-rose-500/30 animate-pulse'
+                          : isGameOver && !isMine
+                          ? 'bg-slate-900/60 border-slate-800 text-slate-600 opacity-50'
+                          : gameActive
+                          ? 'bg-slate-900/90 hover:bg-slate-800 border-slate-750 hover:border-emerald-500/60 text-slate-400 hover:scale-105 active:scale-95 shadow-sm'
+                          : 'bg-slate-900/50 border-slate-800/80 text-slate-600 cursor-not-allowed'
+                      }`}
+                    >
+                      {isRevealed ? (
+                        <span className="animate-in zoom-in-50 duration-200">💎</span>
+                      ) : isGameOver && isMine ? (
+                        <span className="animate-in zoom-in-50 duration-200">💣</span>
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-slate-800" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Game Result Popup Overlay */}
+            {!gameActive && lastWon !== null && (
+              <div
+                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-7 py-4 rounded-2xl border backdrop-blur-xl transition-all animate-in zoom-in-90 duration-200 pointer-events-none shadow-2xl ${
+                  lastWon
+                    ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-emerald-500/30'
+                    : 'bg-rose-950/90 border-rose-500 text-rose-300 shadow-rose-500/30'
+                }`}
+              >
+                <div className="text-[11px] font-mono uppercase text-center tracking-[0.2em] mb-0.5">
+                  {lastWon ? '✦ MISSION SUCCESS ✦' : '✕ DETONATED'}
+                </div>
+                <div className="text-4xl font-heading font-black tracking-tight text-center">
+                  {lastWon ? `${currentMultiplier}×` : 'BUST'}
+                </div>
+                <div className="text-[10px] font-mono text-center mt-1 text-slate-400">
+                  {lastWon ? `+$${((wager * currentMultiplier) - wager).toFixed(2)} Profit` : `-$${wager.toFixed(2)}`}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mine Presets (When not active) */}
+          {!gameActive && (
+            <div className="mt-3 bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+              <div className="flex justify-between items-center text-[10px] font-mono mb-2">
+                <span className="text-slate-400 uppercase">Preset Difficulty:</span>
+                <span className="text-amber-400 font-bold">{mineCount} Mines ({25 - mineCount} Safe Gems)</span>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 mb-2.5">
+                {MINE_PRESETS.map((p) => (
+                  <button
+                    key={p.count}
+                    onClick={() => setMineCount(p.count)}
+                    className={`py-1.5 px-1 rounded-lg text-center border text-[10px] font-mono font-bold transition-all ${
+                      mineCount === p.count
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md shadow-emerald-500/20'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div>{p.label}</div>
+                    <div className="text-[8px] opacity-70">{p.risk}</div>
+                  </button>
+                ))}
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="24"
+                step="1"
+                value={mineCount}
+                onChange={(e) => setMineCount(parseInt(e.target.value))}
+                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              />
+            </div>
+          )}
+
+          {/* Seed Hash Bar */}
+          <div className="mt-3 flex items-center justify-between text-[10px] font-mono text-slate-500 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
+            <span className="truncate max-w-[240px]">Server Hash: {serverSeedHash.substring(0, 16)}...</span>
+            <span className="text-emerald-400">Nonce #{nonce}</span>
+          </div>
+        </div>
+
+        {/* Right Controls (5 cols) */}
+        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between min-h-[520px]">
+          <div>
+            {/* Balance Widget */}
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-mono text-slate-500 uppercase block">Bankroll</span>
+                <span className="text-2xl font-heading font-black text-primary">
+                  ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-mono text-slate-500 uppercase block">
+                  {gameActive ? 'Current Cashout' : 'Potential Max'}
+                </span>
+                <span className="text-lg font-heading font-bold text-emerald-400">
+                  ${gameActive ? (wager * currentMultiplier).toFixed(2) : (wager * getMinesMultiplier(mineCount, 1)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Wager Input */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Wager ($1 – $500)</label>
+              <div className="relative mb-2">
+                <input
+                  type="number"
+                  min="1"
+                  max={Math.min(balance, 500)}
+                  value={wager}
+                  disabled={gameActive}
+                  onChange={(e) => setWager(Math.max(1, Math.min(500, parseFloat(e.target.value) || 1)))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-lg font-heading font-bold text-foreground focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                />
+              </div>
               {!gameActive && (
-                <div className="absolute right-2 top-2 flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setWager((prev) => Math.max(1, parseFloat((prev / 2).toFixed(2))))}
-                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] font-mono rounded text-slate-300 transition-colors"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWager((prev) => Math.min(balance, parseFloat((prev * 2).toFixed(2))))}
-                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] font-mono rounded text-slate-300 transition-colors"
-                  >
-                    2×
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWager(balance)}
-                    className="px-2 py-1 bg-primary/20 hover:bg-primary/30 text-primary text-[11px] font-mono rounded transition-colors"
-                  >
-                    Max
-                  </button>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    ['½', () => setWager(prev => Math.max(1, Math.floor(prev / 2)))],
+                    ['2×', () => setWager(prev => Math.min(500, prev * 2))],
+                    ['Min', () => setWager(1)],
+                    ['Max', () => setWager(Math.min(balance, 500))],
+                  ].map(([lbl, fn]) => (
+                    <button
+                      key={lbl as string}
+                      type="button"
+                      onClick={fn as () => void}
+                      className="py-1.5 bg-slate-800 hover:bg-slate-700 text-[11px] font-mono rounded-lg text-slate-300 font-bold transition-colors"
+                    >
+                      {lbl as string}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+
+            {/* Live Multiplier & Profit Cards */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                <span className="text-[10px] font-mono text-slate-500 block uppercase">Multiplier</span>
+                <span className="text-xl font-heading font-black text-emerald-400">{currentMultiplier}×</span>
+              </div>
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                <span className="text-[10px] font-mono text-slate-500 block uppercase">
+                  {gameActive ? 'Next Gem Mult' : '1st Gem Mult'}
+                </span>
+                <span className="text-xl font-heading font-black text-amber-400">
+                  {nextMultiplier}×
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Stats Readout */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-              <span className="text-[10px] font-mono text-slate-400 block uppercase">Multiplier</span>
-              <span className="text-lg font-heading font-black text-primary">{currentMultiplier}×</span>
-            </div>
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-              <span className="text-[10px] font-mono text-slate-400 block uppercase">
-                {gameActive ? 'Next Multiplier' : 'Profit on Win'}
-              </span>
-              <span className="text-lg font-heading font-black text-emerald-400">
-                {gameActive ? `${nextMultiplier}×` : `+$${potentialProfit}`}
-              </span>
-            </div>
+          {/* Action Button */}
+          <div>
+            {gameActive ? (
+              <button
+                onClick={handleCashout}
+                disabled={revealedTiles.length === 0}
+                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 text-slate-950 font-heading font-black text-lg rounded-xl transition-all shadow-xl shadow-emerald-500/30 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <span>CASHOUT ${(wager * currentMultiplier).toFixed(2)} (+${potentialProfit})</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStart}
+                disabled={wager > balance || wager < 1}
+                className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-heading font-black text-lg rounded-xl transition-all shadow-xl shadow-purple-600/30 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Bomb className="w-5 h-5" />
+                <span>START GAME (${wager})</span>
+              </button>
+            )}
+
+            {/* History Mini Ticker */}
+            {history.length > 0 && (
+              <div className="mt-4 border-t border-slate-800 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-slate-500 uppercase">Recent Games</span>
+                  <span className="text-[10px] font-mono text-slate-400">Click to Verify</span>
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                  {history.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openVerifier(item)}
+                      title={`Mines: ${item.mineCount} | ${item.won ? 'WON' : 'BUST'}`}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold flex-shrink-0 border transition-all hover:scale-105 active:scale-95 flex items-center gap-1 ${
+                        item.won
+                          ? 'bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-600/40 text-emerald-400'
+                          : 'bg-rose-950/60 hover:bg-rose-900/60 border-rose-600/40 text-rose-400'
+                      }`}
+                    >
+                      <span>{item.multiplier}×</span>
+                      <ShieldCheck className="w-3 h-3 opacity-60" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Action Button */}
-        {gameActive ? (
-          <button
-            onClick={handleCashout}
-            disabled={revealedTiles.length === 0}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-heading font-black text-lg rounded-xl transition-all shadow-lg shadow-emerald-600/30 active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <span>CASHOUT ${(wager * currentMultiplier).toFixed(2)}</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleStart}
-            disabled={wager > balance}
-            className="w-full py-4 bg-cta hover:bg-purple-600 disabled:opacity-50 text-white font-heading font-black text-lg rounded-xl transition-all shadow-lg shadow-purple-600/30 active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            {isDemoMode ? (
-              <span>DEMO BET (${wager})</span>
-            ) : (
-              <span>BET (${wager})</span>
-            )}
-          </button>
-        )}
-
-        {/* Recent Bets Mini Ticker */}
-        {history.length > 0 && (
-          <div className="mt-5 border-t border-slate-800 pt-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono text-slate-500 uppercase">Recent Games</span>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {history.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => openVerifier(item)}
-                  title={`Click to 1-Click Verify`}
-                  className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold flex-shrink-0 border transition hover:scale-105 active:scale-95 flex items-center gap-1 ${
-                    item.won
-                      ? 'bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-600/40 text-emerald-400'
-                      : 'bg-rose-950/60 hover:bg-rose-900/60 border-rose-600/40 text-rose-400'
-                  }`}
-                >
-                  <span>{item.multiplier}x</span>
-                  <ShieldCheck className="w-3 h-3 opacity-60" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Auditor Modal */}

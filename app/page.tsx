@@ -16,7 +16,10 @@ import SecurityModal from '@/components/rollbit/SecurityModal';
 import ProvablyFairModal from '@/components/games/ProvablyFairModal';
 import { SupportModal } from "@/components/rollbit/SupportModal";
 import { useAuth } from '@/lib/web3/useAuth';
-import { Sparkles } from 'lucide-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { truncateHash } from '@/lib/utils';
+import { Sparkles, ShieldCheck, Flame, Wallet, Dices, Rocket, Bomb, CircleDot, Landmark, KeyRound, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function CasinoHome() {
   const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'MINES' | 'PLINKO' | 'VAULT'>('DICE');
@@ -36,6 +39,9 @@ export default function CasinoHome() {
     walletMismatch,
     switchWalletSession,
   } = useAuth();
+
+  const { setVisible: setSolanaModalVisible } = useWalletModal();
+  const [heroChain, setHeroChain] = useState<'SOL' | 'EVM'>('SOL');
 
   // Real vs Demo Mode state
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
@@ -190,10 +196,180 @@ export default function CasinoHome() {
         onOpenSupport={() => setIsSupportOpen(true)}
       />
 
-      <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12 pb-8 w-full text-center">
-        <h1 className="text-4xl md:text-6xl font-heading font-black tracking-tight text-foreground uppercase mb-8 drop-shadow-sm mt-4">
-          Autonomous <span className="text-primary">Provably Fair</span> Gaming
+      {/* Ambient Cyber Light Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-96 bg-gradient-to-b from-amber-500/10 via-purple-600/5 to-transparent pointer-events-none blur-3xl -z-10" />
+
+      {/* ── HERO SECTION ────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 w-full text-center">
+        {/* Provably Fair Trust Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-amber-500/30 text-amber-300 text-[11px] font-mono mb-4 shadow-lg shadow-amber-500/10 backdrop-blur-md">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+          <span className="font-bold tracking-wider uppercase">100% Provably Fair · Non-Custodial · Instant Settlement</span>
+        </div>
+
+        {/* Hero Title */}
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-heading font-black tracking-tight text-foreground uppercase mb-3 drop-shadow-md">
+          AUTONOMOUS <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-purple-400 bg-clip-text text-transparent">PROVABLY FAIR</span> CASINO
         </h1>
+        <p className="max-w-2xl mx-auto text-xs sm:text-sm text-slate-400 font-mono mb-6">
+          Bustabit & HMAC-SHA256 mathematical odds. Zero house tampering, non-custodial payouts on Solana & EVM.
+        </p>
+
+        {/* ── RESPONSIVE MULTI-CHAIN WALLET HUB (100% Visible, Never Clipped) ──── */}
+        <div className="max-w-3xl mx-auto mb-8 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl backdrop-blur-lg">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-slate-800/80 mb-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-primary" />
+              <span className="text-xs font-heading font-bold text-slate-200 uppercase tracking-wider">Web3 Multi-Chain Gateway</span>
+            </div>
+            {/* Chain toggle buttons */}
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+              <button
+                onClick={() => setHeroChain('SOL')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  heroChain === 'SOL'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>◎ Solana</span>
+              </button>
+              <button
+                onClick={() => setHeroChain('EVM')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  heroChain === 'EVM'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>⬡ EVM (Base/ETH)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Dynamic Active Chain Panel — Full width, no clipping */}
+          {heroChain === 'SOL' ? (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-950/80 border border-amber-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-3 text-left w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-xl bg-purple-900/30 border border-purple-500/30 flex items-center justify-center text-xl shrink-0">
+                  👻
+                </div>
+                <div>
+                  <div className="text-sm font-heading font-bold text-white flex items-center gap-2">
+                    <span>Phantom / Solflare</span>
+                    {solanaConnected && (
+                      <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.2 rounded-full">
+                        Connected
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-400 truncate max-w-[240px] sm:max-w-xs">
+                    {solanaConnected && solanaPublicKey ? truncateHash(solanaPublicKey, 8, 8) : 'Solana High-Speed Layer 1'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full sm:w-auto flex items-center gap-2 shrink-0">
+                {solanaConnected && solanaPublicKey ? (
+                  <button
+                    onClick={signInSolana}
+                    disabled={isAuthenticating}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-heading font-black text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>{isAuthenticating ? 'Signing...' : 'Sign In with Solana'}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setSolanaModalVisible(true)}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-heading font-black text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span>Connect Phantom</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <ConnectButton.Custom>
+              {({ account, chain: evmChain, openConnectModal, mounted }) => {
+                const connected = mounted && account && evmChain;
+                return (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-950/80 border border-purple-500/20 rounded-xl p-4">
+                    <div className="flex items-center gap-3 text-left w-full sm:w-auto">
+                      <div className="w-10 h-10 rounded-xl bg-amber-900/30 border border-amber-500/30 flex items-center justify-center text-xl shrink-0">
+                        🦊
+                      </div>
+                      <div>
+                        <div className="text-sm font-heading font-bold text-white flex items-center gap-2">
+                          <span>MetaMask / Base / Coinbase</span>
+                          {connected && (
+                            <span className="text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.2 rounded-full">
+                              {evmChain.name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] font-mono text-slate-400 truncate max-w-[240px] sm:max-w-xs">
+                          {connected ? truncateHash(account.address, 8, 8) : 'EVM Smart Contract Layer 2 & Mainnet'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-full sm:w-auto flex items-center gap-2 shrink-0">
+                      {connected ? (
+                        <button
+                          onClick={signInEVM}
+                          disabled={isAuthenticating}
+                          className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-black text-xs rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>{isAuthenticating ? 'Signing...' : 'Sign In with EVM'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={openConnectModal}
+                          className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-heading font-black text-xs rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Wallet className="w-3.5 h-3.5" />
+                          <span>Connect MetaMask</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              }}
+            </ConnectButton.Custom>
+          )}
+        </div>
+
+        {/* ── QUICK GAME SWITCHER CARDS ───────────────────────────── */}
+        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mb-6">
+          {[
+            { id: 'DICE' as const, name: 'CypherDice', rtp: '98% RTP', icon: '🎲', border: 'hover:border-amber-500/50', activeBg: 'bg-amber-500/15 border-amber-500 text-amber-300' },
+            { id: 'CRASH' as const, name: 'CypherCrash', rtp: 'Multiplayer', icon: '🚀', border: 'hover:border-purple-500/50', activeBg: 'bg-purple-500/15 border-purple-500 text-purple-300' },
+            { id: 'MINES' as const, name: 'CypherMines', rtp: '5×5 Matrix', icon: '💎', border: 'hover:border-emerald-500/50', activeBg: 'bg-emerald-500/15 border-emerald-500 text-emerald-300' },
+            { id: 'PLINKO' as const, name: 'CypherPlinko', rtp: 'Up to 1000×', icon: '🎯', border: 'hover:border-cyan-500/50', activeBg: 'bg-cyan-500/15 border-cyan-500 text-cyan-300' },
+            { id: 'VAULT' as const, name: 'Bankroll LP', rtp: 'Earn Yield', icon: '🏦', border: 'hover:border-slate-500/50', activeBg: 'bg-slate-700/40 border-slate-400 text-white' },
+          ].map(game => (
+            <button
+              key={game.id}
+              onClick={() => setActiveTab(game.id)}
+              className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between ${
+                activeTab === game.id
+                  ? `${game.activeBg} shadow-lg scale-[1.02]`
+                  : `bg-slate-900/80 border-slate-800 text-slate-400 ${game.border} hover:bg-slate-800/60`
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xl">{game.icon}</span>
+                <span className="text-[9px] font-mono uppercase bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-800">
+                  {game.rtp}
+                </span>
+              </div>
+              <div className="text-xs font-heading font-black tracking-wide">{game.name}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {isDemoMode && (
