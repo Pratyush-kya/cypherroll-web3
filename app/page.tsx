@@ -16,7 +16,6 @@ import SecurityModal from '@/components/rollbit/SecurityModal';
 import ProvablyFairModal from '@/components/games/ProvablyFairModal';
 import { SupportModal } from "@/components/rollbit/SupportModal";
 import { useAuth } from '@/lib/web3/useAuth';
-import { Sparkles } from 'lucide-react';
 
 export default function CasinoHome() {
   const [activeTab, setActiveTab] = useState<'DICE' | 'CRASH' | 'MINES' | 'PLINKO' | 'VAULT'>('DICE');
@@ -193,40 +192,8 @@ export default function CasinoHome() {
       {/* Ambient Cyber Light Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-96 bg-gradient-to-b from-amber-500/10 via-purple-600/5 to-transparent pointer-events-none blur-3xl -z-10" />
 
-      {/* ── STREAMLINED HERO SECTION (No Duplicated Controls) ────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 w-full text-center">
-        {/* Provably Fair Trust Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-amber-500/30 text-amber-300 text-[11px] font-mono mb-3 shadow-lg shadow-amber-500/10 backdrop-blur-md">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-          <span className="font-bold tracking-wider uppercase">100% Provably Fair · Non-Custodial · Instant Settlement</span>
-        </div>
-
-        {/* Hero Title */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-heading font-black tracking-tight text-foreground uppercase mb-2 drop-shadow-md">
-          AUTONOMOUS <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-purple-400 bg-clip-text text-transparent">PROVABLY FAIR</span> CASINO
-        </h1>
-        <p className="max-w-2xl mx-auto text-xs sm:text-sm text-slate-400 font-mono mb-4">
-          Cryptographically verified Bustabit & HMAC-SHA256 odds on Solana & EVM. 98.0% RTP with real-time settlement.
-        </p>
-
-        {/* ── STREAMLINED PLATFORM METRICS STRIP (Replaces duplicated boxes) ──── */}
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
-          {[
-            { label: 'Player RTP', val: '98.0%', sub: '2.0% Fixed House Edge', color: 'text-emerald-400', border: 'border-emerald-500/20' },
-            { label: 'Algorithm', val: 'HMAC-SHA256', sub: 'Pre-Committed Hashes', color: 'text-amber-400', border: 'border-amber-500/20' },
-            { label: 'Settlement', val: 'Non-Custodial', sub: 'Instant Wallet Payouts', color: 'text-cyan-400', border: 'border-cyan-500/20' },
-            { label: 'Multi-Chain', val: 'SOL + EVM', sub: 'Phantom & MetaMask', color: 'text-purple-400', border: 'border-purple-500/20' },
-          ].map(metric => (
-            <div key={metric.label} className={`bg-slate-900/80 border ${metric.border} rounded-xl p-2.5 text-center shadow-md backdrop-blur-sm`}>
-              <div className="text-[10px] font-mono text-slate-500 uppercase">{metric.label}</div>
-              <div className={`font-heading font-black text-base sm:text-lg ${metric.color}`}>{metric.val}</div>
-              <div className="text-[9px] font-mono text-slate-400 truncate">{metric.sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 md:px-8 py-4 w-full flex-1 flex items-center justify-center">
+      {/* Main Game Stage — Directly below top header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-6 w-full flex-1 flex items-center justify-center">
         {activeTab === 'DICE' && (
           <DiceGame
             userWallet={activeWallet}
