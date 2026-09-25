@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import CrashRocketCanvas from '@/components/3d/CrashRocketCanvas';
-import { Rocket, ShieldCheck, Flame, Users, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Rocket, ShieldCheck, Flame, Users, CheckCircle2, AlertCircle, Volume2, VolumeX, Gauge, Zap } from 'lucide-react';
 import ProvablyFairModal from './ProvablyFairModal';
 import { truncateHash } from '@/lib/utils';
+import { sounds } from '@/lib/sound-effects';
 
 type GameStatus = 'STARTING' | 'FLYING' | 'CRASHED';
 
@@ -43,6 +44,8 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
   const [isAuditorOpen, setIsAuditorOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [pingMs, setPingMs] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(sounds.getMuted());
+  const prevStatusRef = useRef<GameStatus>('STARTING');
   const [modalSeedParams, setModalSeedParams] = useState<{
     serverSeed?: string;
     serverSeedHash?: string;
@@ -60,6 +63,18 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          
+          // Sound trigger on crash
+          if (prevStatusRef.current === 'FLYING' && data.status === 'CRASHED') {
+            sounds.playExplosion();
+          } else if (data.status === 'FLYING') {
+            // Periodic pulse
+            if (Math.random() < 0.25) {
+              sounds.playCrashPulse(data.multiplier);
+            }
+          }
+          prevStatusRef.current = data.status;
+
           setStatus(data.status);
           setMultiplier(data.multiplier);
           setCountdown(data.countdown);
@@ -84,6 +99,11 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
         try {
           const res = await fetch('/api/games/crash/state');
           const data = await res.json();
+          if (prevStatusRef.current === 'FLYING' && data.status === 'CRASHED') {
+            sounds.playExplosion();
+          }
+          prevStatusRef.current = data.status;
+
           setStatus(data.status);
           setMultiplier(data.multiplier);
           setCountdown(data.countdown);
@@ -117,8 +137,9 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
     return () => clearInterval(interval);
   }, []);
 
+  // Synchronized Demo ID formula exactly matching the backend API
   const effectivePlayerId = isDemoMode
-    ? 'demo_' + (userWallet ? userWallet.substring(0, 6) : 'player')
+    ? (userWallet ? `demo_${userWallet.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}` : 'demo_anon_player')
     : userWallet;
 
   // Check if current user is in activeBets (including server-side auto-cashout detection)
@@ -130,6 +151,7 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
       if (myBet.cashedOut && myBet.cashedOutAt && !hasCashedOut) {
         setHasCashedOut(true);
         setCashedOutAt(myBet.cashedOutAt);
+        sounds.playCashout();
         // Server-side auto-cashout detected — credit balance for demo mode
         if (myBet.isAutoCashout) {
           setWasAutoCashout(true);
@@ -147,6 +169,7 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
   const handlePlaceBet = async () => {
     if (wager <= 0 || wager > balance || status !== 'STARTING' || isSubmitting) return;
 
+    sounds.playClick();
     setIsSubmitting(true);
     try {
       const parsedAuto = autoCashoutTarget.trim() ? parseFloat(autoCashoutTarget) : undefined;
@@ -194,6 +217,7 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Cashout failed');
 
+      sounds.playCashout();
       if (!data.alreadyCashedOut) {
         if (isDemoMode) {
           const winPayout = parseFloat((wager * data.multiplier).toFixed(2));
@@ -215,10 +239,17 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
     }
   };
 
+  // Telemetry computation
+  const altitudeKm = Math.round(multiplier * 420);
+  const velocityKmh = Math.round(multiplier * 2400);
+  const orbitLayer = multiplier < 2.0 ? 'Troposphere' : multiplier < 5.0 ? 'Stratosphere' : multiplier < 15.0 ? 'Low Earth Orbit' : multiplier < 50.0 ? 'Deep Space' : 'Supernova Hyperdrive';
+
   return (
     <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* 3D Global Rocket Arena (Left 7 Cols) */}
-      <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[500px]">
+      <div className={`lg:col-span-7 bg-slate-900 border rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[500px] transition-all duration-300 ${
+        status === 'CRASHED' ? 'border-rose-500/60 shadow-[0_0_40px_rgba(244,63,94,0.25)]' : 'border-slate-800'
+      }`}>
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-2">
           <div className="flex items-center gap-2">
@@ -230,21 +261,31 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
             </span>
           </div>
 
-          <button
-            onClick={() => {
-              setModalSeedParams({
-                serverSeed: '',
-                serverSeedHash,
-                clientSeed: 'global_crash_seed_1',
-                nonce: 1,
-              });
-              setIsAuditorOpen(true);
-            }}
-            className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-950/40 hover:bg-emerald-900/50 px-2.5 py-1 rounded-lg border border-emerald-500/40 shadow-sm font-bold"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Verify Fairness</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsMuted(sounds.toggleMute())}
+              className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-foreground transition-colors"
+              title={isMuted ? "Unmute Sound" : "Mute Sound"}
+            >
+              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+            </button>
+
+            <button
+              onClick={() => {
+                setModalSeedParams({
+                  serverSeed: '',
+                  serverSeedHash,
+                  clientSeed: 'global_crash_seed_1',
+                  nonce: 1,
+                });
+                setIsAuditorOpen(true);
+              }}
+              className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-950/40 hover:bg-emerald-900/50 px-2.5 py-1 rounded-lg border border-emerald-500/40 shadow-sm font-bold"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Verify Fairness</span>
+            </button>
+          </div>
         </div>
 
         {/* 3D WebGL Arena */}
@@ -278,11 +319,26 @@ export default function CrashGame({ userWallet, balance, setBalance, onBetPlaced
                   {multiplier.toFixed(2)}×
                 </span>
                 <span className="text-xs font-mono block text-slate-400 mt-1 uppercase tracking-widest">
-                  {status === 'FLYING' ? 'ROCKET IN ORBIT' : 'CRASHED / BUSTED'}
+                  {status === 'FLYING' ? orbitLayer.toUpperCase() : 'CRASHED / BUSTED'}
                 </span>
               </div>
             )}
           </div>
+
+          {/* Live Flight Telemetry HUD (Active during flight) */}
+          {status === 'FLYING' && (
+            <div className="absolute bottom-3 inset-x-3 flex items-center justify-between pointer-events-none z-10 text-[10px] font-mono">
+              <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-lg text-slate-400 flex items-center gap-1.5">
+                <Gauge className="w-3 h-3 text-cyan-400" />
+                <span>Alt: <strong className="text-cyan-300 font-bold">{altitudeKm.toLocaleString()} km</strong></span>
+              </div>
+
+              <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-lg text-slate-400 flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-amber-400" />
+                <span>Vel: <strong className="text-amber-300 font-bold">{velocityKmh.toLocaleString()} km/h</strong></span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Recent Crashes Multipliers */}

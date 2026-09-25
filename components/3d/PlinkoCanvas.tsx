@@ -2,24 +2,98 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { sounds } from '@/lib/sound-effects';
+
+export interface PlinkoDropPayload {
+  id: string;
+  path: number[];
+  slot: number;
+  multiplier: number;
+}
 
 interface PlinkoCanvasProps {
-  isDropping: boolean;
   rows: number;
+  activeDrop?: PlinkoDropPayload | null;
+  onBallLanded?: (slot: number, multiplier: number) => void;
+  // Legacy compatibility props
+  isDropping?: boolean;
   path?: number[] | null;
   slot?: number | null;
   multiplier?: number | null;
 }
 
-export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier }: PlinkoCanvasProps) {
+interface ActiveBall {
+  id: string;
+  path: number[];
+  slot: number;
+  multiplier: number;
+  animTime: number;
+  lastStep: number;
+  mesh: THREE.Mesh;
+}
+
+export default function PlinkoCanvas({
+  rows,
+  activeDrop,
+  onBallLanded,
+  isDropping,
+  path,
+  slot,
+  multiplier,
+}: PlinkoCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [hasWebGL, setHasWebGL] = useState(true);
 
   // Synchronize mutable refs for 60fps animation loop
-  const propsRef = useRef({ isDropping, rows, path, slot, multiplier });
+  const propsRef = useRef({
+    rows,
+    activeDrop,
+    onBallLanded,
+    isDropping,
+    path,
+    slot,
+    multiplier,
+  });
+
   useEffect(() => {
-    propsRef.current = { isDropping, rows, path, slot, multiplier };
-  }, [isDropping, rows, path, slot, multiplier]);
+    propsRef.current = {
+      rows,
+      activeDrop,
+      onBallLanded,
+      isDropping,
+      path,
+      slot,
+      multiplier,
+    };
+  }, [rows, activeDrop, onBallLanded, isDropping, path, slot, multiplier]);
+
+  // Queue of drop events to process in the animation loop
+  const pendingDropsRef = useRef<PlinkoDropPayload[]>([]);
+  const lastProcessedIdRef = useRef<string | null>(null);
+
+  // Watch for activeDrop changes
+  useEffect(() => {
+    if (activeDrop && activeDrop.id !== lastProcessedIdRef.current) {
+      lastProcessedIdRef.current = activeDrop.id;
+      pendingDropsRef.current.push(activeDrop);
+    }
+  }, [activeDrop]);
+
+  // Legacy single drop watcher
+  useEffect(() => {
+    if (isDropping && path && path.length === rows) {
+      const dropId = `legacy_${Date.now()}`;
+      if (lastProcessedIdRef.current !== dropId) {
+        lastProcessedIdRef.current = dropId;
+        pendingDropsRef.current.push({
+          id: dropId,
+          path,
+          slot: slot || 0,
+          multiplier: multiplier || 0,
+        });
+      }
+    }
+  }, [isDropping, path, rows, slot, multiplier]);
 
   useEffect(() => {
     const currentMount = mountRef.current;
@@ -62,15 +136,15 @@ export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier 
       currentMount.appendChild(renderer.domElement);
 
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
       scene.add(ambientLight);
-      
-      const pointLight = new THREE.PointLight(0x00f0ff, 5, 30);
-      pointLight.position.set(0, 5, 5);
-      scene.add(pointLight);
 
-      const purpleLight = new THREE.PointLight(0x8b5cf6, 6, 30);
-      purpleLight.position.set(0, -10, 5);
+      const cyanLight = new THREE.PointLight(0x00f0ff, 5, 30);
+      cyanLight.position.set(0, 6, 6);
+      scene.add(cyanLight);
+
+      const purpleLight = new THREE.PointLight(0xa855f7, 6, 30);
+      purpleLight.position.set(0, -10, 6);
       scene.add(purpleLight);
 
       // Group for board
@@ -80,30 +154,30 @@ export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier 
       // Materials
       const pegMat = new THREE.MeshStandardMaterial({
         color: 0x94a3b8,
-        metalness: 0.8,
+        metalness: 0.85,
         roughness: 0.2,
       });
 
+      const ballGeo = new THREE.SphereGeometry(0.28, 24, 24);
       const ballMat = new THREE.MeshStandardMaterial({
-        color: 0xffb800,
-        emissive: 0xffb800,
-        emissiveIntensity: 0.5,
-        metalness: 0.3,
+        color: 0xf59e0b,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.7,
+        metalness: 0.4,
         roughness: 0.1,
       });
 
       // Peg geometry
       const pegGeo = new THREE.SphereGeometry(0.15, 16, 16);
-      
-      // Build Pegs
       const spacing = 1.2;
       const startY = (rows * spacing) / 2;
-      
+
+      // Build Pegs
       for (let r = 0; r < rows; r++) {
-        const pegsInRow = r + 3; // Start with 3 pegs at top
+        const pegsInRow = r + 3;
         const rowWidth = (pegsInRow - 1) * spacing;
         const startX = -rowWidth / 2;
-        
+
         for (let c = 0; c < pegsInRow; c++) {
           const peg = new THREE.Mesh(pegGeo, pegMat);
           peg.position.set(startX + c * spacing, startY - r * spacing, 0);
@@ -111,7 +185,8 @@ export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier 
         }
       }
 
-      // Slots
+      // Slot meshes for landing animations
+      const slotMeshes: THREE.Mesh[] = [];
       const slotGeo = new THREE.BoxGeometry(1.0, 0.5, 0.5);
       const slotsCount = rows + 1;
       const slotsWidth = (slotsCount - 1) * spacing;
@@ -119,126 +194,131 @@ export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier 
       const slotY = startY - rows * spacing - 1;
 
       for (let s = 0; s < slotsCount; s++) {
-        // Color based on edge proximity (green for edges, gray for center)
         const distance = Math.abs(s - rows / 2) / (rows / 2);
         const slotColor = new THREE.Color().lerpColors(
-          new THREE.Color(0x334155),
+          new THREE.Color(0x1e293b),
           new THREE.Color(0x10b981),
           distance
         );
-        
+
         const sMat = new THREE.MeshStandardMaterial({
           color: slotColor,
           metalness: 0.5,
-          roughness: 0.5,
+          roughness: 0.4,
         });
         const slotMesh = new THREE.Mesh(slotGeo, sMat);
         slotMesh.position.set(slotStartX + s * spacing, slotY, 0);
         boardGroup.add(slotMesh);
+        slotMeshes.push(slotMesh);
       }
 
-      // Ball
-      const ballGeo = new THREE.SphereGeometry(0.3, 32, 32);
-      const ball = new THREE.Mesh(ballGeo, ballMat);
-      
-      // Start position
-      const initialBallY = startY + 1.5;
-      ball.position.set(0, initialBallY, 0);
-      ball.visible = false;
-      boardGroup.add(ball);
+      // Array of active balls currently cascading
+      const activeBalls: ActiveBall[] = [];
 
-      // Particles
-      const particleCount = 20;
-      const particles = new THREE.InstancedMesh(
-        new THREE.SphereGeometry(0.05, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0xffb800, transparent: true, opacity: 0.6 }),
-        particleCount
-      );
-      const dummy = new THREE.Object3D();
-      for(let i=0; i<particleCount; i++) {
-        dummy.position.set(0, -100, 0);
-        dummy.updateMatrix();
-        particles.setMatrixAt(i, dummy.matrix);
-      }
-      boardGroup.add(particles);
+      const spawnBall = (drop: PlinkoDropPayload) => {
+        const mesh = new THREE.Mesh(ballGeo, ballMat.clone());
+        mesh.position.set(0, startY + 1.5, 0);
+        boardGroup.add(mesh);
 
-      let animTime = 0;
-      let isAnimating = false;
-      let particleIndex = 0;
+        activeBalls.push({
+          id: drop.id,
+          path: drop.path,
+          slot: drop.slot,
+          multiplier: drop.multiplier,
+          animTime: 0,
+          lastStep: -1,
+          mesh,
+        });
+      };
 
       const animate = () => {
         animationId = requestAnimationFrame(animate);
 
-        const { isDropping: curDropping, rows: curRows, path: curPath } = propsRef.current;
-
-        if (curDropping && curPath && curPath.length === curRows) {
-          if (!isAnimating) {
-            isAnimating = true;
-            animTime = 0;
-            ball.position.set(0, initialBallY, 0);
-            ball.visible = true;
+        // Process any pending drops
+        while (pendingDropsRef.current.length > 0) {
+          const drop = pendingDropsRef.current.shift();
+          if (drop && drop.path && drop.path.length === rows) {
+            spawnBall(drop);
           }
-
-          animTime += 0.05; // speed
-          
-          // Calculate ball position
-          const totalTime = curRows;
-          if (animTime <= totalTime) {
-            const step = Math.floor(animTime);
-            const t = animTime - step; // 0 to 1 fraction
-            
-            // Calculate current start and end points for this step
-            let currentX = 0;
-            let currentY = startY + 1.5; // Initial drop
-            
-            // Reconstruct path to current step
-            for (let i = 0; i < step; i++) {
-              currentX += curPath[i] === 1 ? spacing/2 : -spacing/2;
-              currentY -= spacing;
-            }
-            
-            let nextX = currentX;
-            let nextY = currentY - spacing;
-            
-            if (step < curRows) {
-              nextX = currentX + (curPath[step] === 1 ? spacing/2 : -spacing/2);
-            } else {
-              nextY = currentY - 2; // Drop into slot
-            }
-            
-            // Parabola bounce
-            const bounceY = Math.sin(t * Math.PI) * 0.5;
-            
-            ball.position.x = THREE.MathUtils.lerp(currentX, nextX, t);
-            ball.position.y = THREE.MathUtils.lerp(currentY, nextY, t) + (step < curRows ? bounceY : 0);
-            
-            // Update particles
-            particleIndex = (particleIndex + 1) % particleCount;
-            dummy.position.copy(ball.position);
-            // Add a tiny bit of random scatter
-            dummy.position.x += (Math.random() - 0.5) * 0.2;
-            dummy.position.y += (Math.random() - 0.5) * 0.2;
-            dummy.updateMatrix();
-            particles.setMatrixAt(particleIndex, dummy.matrix);
-            particles.instanceMatrix.needsUpdate = true;
-            
-          } else {
-            // Reached end
-            isAnimating = false;
-          }
-        } else if (!curDropping && !isAnimating) {
-           ball.visible = false;
-           // Hide particles
-           for(let i=0; i<particleCount; i++) {
-             dummy.position.set(0, -100, 0);
-             dummy.updateMatrix();
-             particles.setMatrixAt(i, dummy.matrix);
-           }
-           particles.instanceMatrix.needsUpdate = true;
         }
 
-        // Slow board rotation for coolness
-        boardGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.05;
+        // Animate all active balls
+        for (let b = activeBalls.length - 1; b >= 0; b--) {
+          const ball = activeBalls[b];
+          ball.animTime += 0.055; // Smooth drop speed
+
+          const step = Math.floor(ball.animTime);
+
+          // Trigger peg bounce sound and subtle vibration
+          if (step > ball.lastStep && step <= rows) {
+            ball.lastStep = step;
+            sounds.playPegBounce(step);
+          }
+
+          if (ball.animTime <= rows) {
+            const t = ball.animTime - step;
+
+            let currentX = 0;
+            let currentY = startY + 1.5;
+
+            for (let i = 0; i < step; i++) {
+              currentX += ball.path[i] === 1 ? spacing / 2 : -spacing / 2;
+              currentY -= spacing;
+            }
+
+            let nextX = currentX;
+            let nextY = currentY - spacing;
+
+            if (step < rows) {
+              nextX = currentX + (ball.path[step] === 1 ? spacing / 2 : -spacing / 2);
+            } else {
+              nextY = currentY - 2;
+            }
+
+            // Parabolic peg bounce arc
+            const bounceY = Math.sin(t * Math.PI) * 0.45;
+            ball.mesh.position.x = THREE.MathUtils.lerp(currentX, nextX, t);
+            ball.mesh.position.y = THREE.MathUtils.lerp(currentY, nextY, t) + bounceY;
+          } else {
+            // Ball reached slot!
+            const landedSlot = ball.slot;
+            const landedMult = ball.multiplier;
+
+            // Flash the landing slot
+            if (slotMeshes[landedSlot]) {
+              const originalColor = (slotMeshes[landedSlot].material as THREE.MeshStandardMaterial).color.clone();
+              (slotMeshes[landedSlot].material as THREE.MeshStandardMaterial).emissive.setHex(0x10b981);
+              (slotMeshes[landedSlot].material as THREE.MeshStandardMaterial).emissiveIntensity = 1.0;
+
+              setTimeout(() => {
+                if (slotMeshes[landedSlot]) {
+                  (slotMeshes[landedSlot].material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+                  (slotMeshes[landedSlot].material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
+                }
+              }, 220);
+            }
+
+            // Play win sound if profitable
+            if (landedMult >= 1.5) {
+              sounds.playCashout();
+            } else {
+              sounds.playClick(350);
+            }
+
+            // Notify parent
+            if (propsRef.current.onBallLanded) {
+              propsRef.current.onBallLanded(landedSlot, landedMult);
+            }
+
+            // Clean up ball mesh
+            boardGroup.remove(ball.mesh);
+            (ball.mesh.material as THREE.Material).dispose();
+            activeBalls.splice(b, 1);
+          }
+        }
+
+        // Ambient board sway
+        boardGroup.rotation.y = Math.sin(Date.now() * 0.0006) * 0.04;
 
         if (renderer) {
           renderer.render(scene, camera);
@@ -258,7 +338,7 @@ export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier 
 
       window.addEventListener('resize', handleResize);
     } catch (err) {
-      console.warn('WebGL sandbox:', err);
+      console.warn('WebGL sandbox error:', err);
       setHasWebGL(false);
       return;
     }
@@ -271,7 +351,7 @@ export default function PlinkoCanvas({ isDropping, rows, path, slot, multiplier 
       }
       if (renderer) renderer.dispose();
     };
-  }, [rows]); // Re-init if rows change
+  }, [rows]);
 
   // Tor Safe 2D Fallback
   if (!hasWebGL) {

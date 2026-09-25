@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import MinesCanvas from '@/components/3d/MinesCanvas';
 import { getMinesMultiplier } from '@/lib/provably-fair';
-import { ShieldCheck, Bomb, Gem, Sparkles, Flame, Trophy, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Bomb, Gem, Sparkles, Flame, Trophy, TrendingUp, TrendingDown, RefreshCw, Volume2, VolumeX, Dices } from 'lucide-react';
 import ProvablyFairModal from './ProvablyFairModal';
+import { sounds } from '@/lib/sound-effects';
 
 interface MinesHistoryItem {
   id: string;
@@ -45,6 +46,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
   const [minePositions, setMinePositions] = useState<number[]>([]);
   const [currentMultiplier, setCurrentMultiplier] = useState<number>(1);
   const [lastWon, setLastWon] = useState<boolean | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(sounds.getMuted());
 
   const [history, setHistory] = useState<MinesHistoryItem[]>([]);
   const [nonce, setNonce] = useState<number>(1);
@@ -73,6 +75,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
   const handleStart = async () => {
     if (wager <= 0 || wager > balance || gameActive) return;
 
+    sounds.playClick();
     try {
       setRevealedTiles([]);
       setMinePositions([]);
@@ -127,6 +130,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
 
       if (data.isMine) {
         // Boom! Game Over
+        sounds.playExplosion();
         setGameActive(false);
         setLastWon(false);
         setMinePositions(data.minePositions || [index]);
@@ -139,7 +143,8 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         setTotalProfit(prev => parseFloat((prev - wager).toFixed(2)));
         addToHistory(false, 0, -wager);
       } else {
-        // Gem found
+        // Gem found!
+        sounds.playGem(revealedTiles.length + 1);
         setRevealedTiles(prev => [...prev, index]);
         setCurrentMultiplier(data.currentMultiplier);
         
@@ -151,6 +156,14 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
     } catch (err: any) {
       alert(err.message || "Failed to reveal tile");
     }
+  };
+
+  const handlePickRandom = () => {
+    if (!gameActive) return;
+    const unrevealed = Array.from({ length: 25 }, (_, i) => i).filter(i => !revealedTiles.includes(i));
+    if (unrevealed.length === 0) return;
+    const randomIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+    handleTileClick(randomIndex);
   };
 
   const handleCashout = async () => {
@@ -173,6 +186,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
       setGameActive(false);
       setLastWon(true);
       setMinePositions(data.minePositions || []);
+      sounds.playCashout();
       
       if (isDemoMode) {
         setBalance(prev => parseFloat((prev + data.payout).toFixed(2)));
@@ -264,6 +278,15 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Sound Toggle */}
+              <button
+                onClick={() => setIsMuted(sounds.toggleMute())}
+                className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-foreground transition-colors"
+                title={isMuted ? "Unmute Sound" : "Mute Sound"}
+              >
+                {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+              </button>
+
               {/* View Mode Toggle */}
               <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px] font-mono">
                 <button
@@ -496,13 +519,24 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
           {/* Action Button */}
           <div>
             {gameActive ? (
-              <button
-                onClick={handleCashout}
-                disabled={revealedTiles.length === 0}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 text-slate-950 font-heading font-black text-lg rounded-xl transition-all shadow-xl shadow-emerald-500/30 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <span>CASHOUT ${(wager * currentMultiplier).toFixed(2)} (+${potentialProfit})</span>
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleCashout}
+                  disabled={revealedTiles.length === 0}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 text-slate-950 font-heading font-black text-lg rounded-xl transition-all shadow-xl shadow-emerald-500/30 active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  <span>CASHOUT ${(wager * currentMultiplier).toFixed(2)} (+${potentialProfit})</span>
+                </button>
+                <button
+                  onClick={handlePickRandom}
+                  disabled={!gameActive || revealedTiles.length >= (25 - mineCount)}
+                  className="w-full py-2.5 bg-slate-900/90 hover:bg-slate-800 text-amber-400 border border-amber-500/30 hover:border-amber-400/60 font-heading font-bold text-sm rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <Dices className="w-4 h-4" />
+                  <span>PICK RANDOM TILE</span>
+                </button>
+              </div>
             ) : (
               <button
                 onClick={handleStart}
