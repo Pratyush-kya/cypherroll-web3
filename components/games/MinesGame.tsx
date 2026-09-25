@@ -100,7 +100,9 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to start game');
 
-      if (!isDemoMode && data.newBalance !== undefined) {
+      if (isDemoMode) {
+        setBalance(prev => parseFloat((prev - wager).toFixed(2)));
+      } else if (data.newBalance !== undefined) {
         setBalance(data.newBalance);
       }
       
@@ -303,7 +305,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
               <Gem className="w-5 h-5 text-emerald-400" />
               <span className="font-heading text-sm font-bold text-foreground">CypherMines</span>
               <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                98.0% RTP (2% Edge)
+                97.0% RTP (3% Edge)
               </span>
             </div>
 

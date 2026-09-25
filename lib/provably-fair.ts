@@ -208,7 +208,8 @@ export function calculateMinePositions(serverSeed: string, clientSeed: string, n
 }
 
 /**
- * Mines payout multiplier with 2% house edge
+ * Mines payout multiplier with 3% house edge (97% RTP)
+ * Built with conservative floor rounding to guarantee house edge retention
  */
 export function getMinesMultiplier(mineCount: number, gemsRevealed: number): number {
   const totalTiles = 25;
@@ -221,8 +222,10 @@ export function getMinesMultiplier(mineCount: number, gemsRevealed: number): num
     fairMultiplier *= (totalTiles - i) / (safeTiles - i);
   }
   
-  const houseEdge = 0.02;
-  return parseFloat((fairMultiplier * (1 - houseEdge)).toFixed(4));
+  const houseEdge = 0.03; // 3% House Edge for consistent company margin
+  const adjusted = fairMultiplier * (1 - houseEdge);
+  // Floor to 2 decimals to ensure house margin is never diluted by fractional round-up
+  return Math.max(1.01, Math.floor(adjusted * 100) / 100);
 }
 
 /**
