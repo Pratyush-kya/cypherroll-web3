@@ -66,6 +66,7 @@ export default function PlinkoGame({
 
   // Dropping state & Canvas Bridge
   const [activeDrop, setActiveDrop] = useState<PlinkoDropPayload | null>(null);
+  const [isDropping, setIsDropping] = useState<boolean>(false);
   const [inFlightCount, setInFlightCount] = useState<number>(0);
   const [highlightedSlot, setHighlightedSlot] = useState<number | null>(null);
 
@@ -111,6 +112,9 @@ export default function PlinkoGame({
       return;
     }
 
+    if (playMode === 'MANUAL' && isDropping) return;
+    if (playMode === 'MANUAL') setIsDropping(true);
+
     sounds.playClick(650);
     setInFlightCount((prev) => prev + 1);
 
@@ -133,7 +137,7 @@ export default function PlinkoGame({
 
       const dropId = `drop_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-      // Pass drop to 3D canvas
+      // Pass single drop to 3D canvas
       setActiveDrop({
         id: dropId,
         path: data.path,
@@ -159,14 +163,20 @@ export default function PlinkoGame({
         rakeback: data.rakeback,
         vipTier: data.vipTier,
       });
+
+      // Release manual drop lock after 500ms debounce
+      if (playMode === 'MANUAL') {
+        setTimeout(() => setIsDropping(false), 500);
+      }
     } catch (err: any) {
       setInFlightCount((prev) => Math.max(0, prev - 1));
+      if (playMode === 'MANUAL') setIsDropping(false);
       if (isAutoActive) {
         setIsAutoActive(false);
         if (autoIntervalRef.current) clearInterval(autoIntervalRef.current);
       }
     }
-  }, [wager, balance, rows, risk, clientSeed, userWallet, isDemoMode, isAutoActive, serverSeedHash]);
+  }, [wager, balance, rows, risk, clientSeed, userWallet, isDemoMode, isAutoActive, serverSeedHash, playMode, isDropping]);
 
   const pendingResultsRef = useRef<Map<string, any>>(new Map());
 
@@ -225,38 +235,44 @@ export default function PlinkoGame({
     ]);
   };
 
-  // Auto Drop Loop Controller
-  const startAutoDrop = () => {
-    if (wager <= 0 || wager > balance) return;
-    setIsAutoActive(true);
-    setAutoRemaining(autoTotal);
-  };
+  // Keep a stable ref to executeDrop so auto-interval never re-triggers unexpectedly
+  const executeDropRef = useRef(executeDrop);
+  useEffect(() => {
+    executeDropRef.current = executeDrop;
+  });
 
-  const stopAutoDrop = () => {
+  const stopAutoDrop = useCallback(() => {
     setIsAutoActive(false);
     setAutoRemaining(0);
     if (autoIntervalRef.current) {
       clearInterval(autoIntervalRef.current);
       autoIntervalRef.current = null;
     }
+  }, []);
+
+  const startAutoDrop = () => {
+    if (wager <= 0 || wager > balance) return;
+    setIsAutoActive(true);
+    setAutoRemaining(autoTotal);
   };
 
+  // Controlled, single-cadence auto-drop loop (no cascading re-renders)
   useEffect(() => {
     if (isAutoActive) {
+      // Fire single initial drop
+      executeDropRef.current();
+
+      // Paced cadence (650ms) - drops exactly 1 ball per beat
       autoIntervalRef.current = setInterval(() => {
         setAutoRemaining((prev) => {
           if (prev <= 1 && prev !== -1) {
-            // Reached limit
             stopAutoDrop();
             return 0;
           }
-          executeDrop();
+          executeDropRef.current();
           return prev === -1 ? -1 : prev - 1;
         });
-      }, 380);
-
-      // Fire initial
-      executeDrop();
+      }, 650);
     } else {
       if (autoIntervalRef.current) {
         clearInterval(autoIntervalRef.current);
@@ -267,7 +283,7 @@ export default function PlinkoGame({
     return () => {
       if (autoIntervalRef.current) clearInterval(autoIntervalRef.current);
     };
-  }, [isAutoActive, executeDrop]);
+  }, [isAutoActive, stopAutoDrop]);
 
   const openVerifierForDrop = (item: BetHistoryItem) => {
     setModalSeedParams({
@@ -610,11 +626,20 @@ export default function PlinkoGame({
               <button
                 type="button"
                 onClick={executeDrop}
-                disabled={wager > balance || wager < 1}
+                disabled={isDropping || wager > balance || wager < 1}
                 className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 text-slate-950 font-heading font-black text-lg rounded-xl transition-all shadow-xl shadow-cyan-500/30 active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <Zap className="w-5 h-5" />
-                <span>DROP BALL (${wager})</span>
+                {isDropping ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin rounded-full h-4 w-4 border-2 border-slate-950 border-t-transparent" />
+                    DROPPING...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    DROP BALL (${wager})
+                  </span>
+                )}
               </button>
             ) : isAutoActive ? (
               <button
