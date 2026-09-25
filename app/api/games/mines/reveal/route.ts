@@ -1,24 +1,27 @@
 import { NextResponse } from 'next/server';
 import { getMinesMultiplier } from '@/lib/provably-fair';
-import { activeMinesGames } from '@/lib/mines-state';
+import { activeMinesGames, resolveMinesGame, encodeMinesToken } from '@/lib/mines-state';
 import { recordAtomicBet, broadcastLiveBet, calculateDeterministicRakeback, getOrCreatePlayer, refundPlayerWager } from '@/lib/supabase';
-import { verifySession } from '@/lib/auth';
 import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // Origin + rate-limit guard (180 tile reveals/min — fast click game)
-    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 180, blockMs: 15_000 });
+    // Fast reveal rate guard: 300 tile reveals/min per session/IP, soft 2s block
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 300, blockMs: 2_000 });
     if (guard) return guard;
 
     const body = await req.json();
-    const { walletAddress, gameId, tileIndex, isDemo } = body;
+    const { walletAddress, gameId, gameToken, tileIndex, isDemo } = body;
 
-    const game = activeMinesGames.get(walletAddress || 'Demo_Player');
-    if (!game || game.gameId !== gameId) {
-      return NextResponse.json({ error: 'Game not found or expired' }, { status: 404 });
+    // Resilient multi-tier resolution: checks encrypted stateless token first, then memory caches
+    const game = resolveMinesGame({ gameToken, gameId, walletAddress });
+    if (!game) {
+      return NextResponse.json({
+        error: 'Game not found or expired. Please start a new game.',
+        code: 'GAME_EXPIRED',
+      }, { status: 404 });
     }
 
     if (tileIndex < 0 || tileIndex > 24) {
@@ -36,6 +39,7 @@ export async function POST(req: Request) {
 
     if (isMine) {
       // Game over, lost
+      activeMinesGames.delete(game.gameId);
       activeMinesGames.delete(game.wallet);
 
       if (game.isDemo) {
@@ -51,9 +55,7 @@ export async function POST(req: Request) {
       const profile = await getOrCreatePlayer(game.wallet);
       const rakebackEarned = calculateDeterministicRakeback(game.wager, 0.02, profile.vip_tier);
 
-      // Record losing bet
-      // We already locked the wager, so we need to either refund and recordAtomicBet (which deducts), or just use a custom settle.
-      // Since Dice uses recordAtomicBet, we can refund and then recordAtomicBet.
+      // Settle locked wager
       await refundPlayerWager(game.wallet, game.wager);
 
       const updatedState = await recordAtomicBet({
@@ -62,7 +64,7 @@ export async function POST(req: Request) {
         wager: game.wager,
         won: false,
         targetPayout: 0,
-        outcome: 0, // 0 multiplier
+        outcome: 0,
         payout: 0,
         profit: -game.wager,
         serverSeedHash: game.serverSeedHash,
@@ -93,11 +95,16 @@ export async function POST(req: Request) {
       });
     }
 
-    // Gem found
+    // Gem found! Update in-memory caches and re-encode updated token
+    activeMinesGames.set(game.gameId, game);
+    activeMinesGames.set(game.wallet, game);
+    const nextGameToken = encodeMinesToken(game);
+
     return NextResponse.json({
       isMine: false,
       gemsRevealed,
       currentMultiplier,
+      gameToken: nextGameToken,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });

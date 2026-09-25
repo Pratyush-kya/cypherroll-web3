@@ -41,6 +41,8 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
   const [wager, setWager] = useState<number>(10);
   const [gameActive, setGameActive] = useState<boolean>(false);
   const [gameId, setGameId] = useState<string>('');
+  const [gameToken, setGameToken] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const [revealedTiles, setRevealedTiles] = useState<number[]>([]);
   const [minePositions, setMinePositions] = useState<number[]>([]);
@@ -76,6 +78,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
     if (wager <= 0 || wager > balance || gameActive) return;
 
     sounds.playClick();
+    setErrorMessage(null);
     try {
       setRevealedTiles([]);
       setMinePositions([]);
@@ -102,11 +105,13 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
       }
       
       setGameId(data.gameId);
+      setGameToken(data.gameToken || null);
       if (data.serverSeedHash) setServerSeedHash(data.serverSeedHash);
       setGameActive(true);
       setTotalWagered(prev => parseFloat((prev + wager).toFixed(2)));
     } catch (err: any) {
-      alert(err.message || "Failed to start game");
+      setErrorMessage(err.message || "Failed to start game");
+      setTimeout(() => setErrorMessage(null), 4000);
     }
   };
 
@@ -120,18 +125,29 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         body: JSON.stringify({
           walletAddress: userWallet || (isDemoMode ? 'Demo_Player' : ''),
           gameId,
+          gameToken,
           tileIndex: index,
           isDemo: Boolean(isDemoMode),
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Reveal failed');
+      if (!res.ok) {
+        if (data.code === 'GAME_EXPIRED' || (data.error && data.error.includes('expired'))) {
+          setGameActive(false);
+          setGameToken(null);
+          setErrorMessage('Game expired or reset. Ready to start a fresh round!');
+          setTimeout(() => setErrorMessage(null), 4000);
+          return;
+        }
+        throw new Error(data.error || 'Reveal failed');
+      }
 
       if (data.isMine) {
         // Boom! Game Over
         sounds.playExplosion();
         setGameActive(false);
+        setGameToken(null);
         setLastWon(false);
         setMinePositions(data.minePositions || [index]);
         
@@ -144,6 +160,7 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         addToHistory(false, 0, -wager);
       } else {
         // Gem found!
+        if (data.gameToken) setGameToken(data.gameToken);
         sounds.playGem(revealedTiles.length + 1);
         setRevealedTiles(prev => [...prev, index]);
         setCurrentMultiplier(data.currentMultiplier);
@@ -154,7 +171,8 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         }
       }
     } catch (err: any) {
-      alert(err.message || "Failed to reveal tile");
+      setErrorMessage(err.message || "Failed to reveal tile");
+      setTimeout(() => setErrorMessage(null), 4000);
     }
   };
 
@@ -176,14 +194,25 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
         body: JSON.stringify({
           walletAddress: userWallet || (isDemoMode ? 'Demo_Player' : ''),
           gameId,
+          gameToken,
           isDemo: Boolean(isDemoMode),
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Cashout failed');
+      if (!res.ok) {
+        if (data.code === 'GAME_EXPIRED' || (data.error && data.error.includes('expired'))) {
+          setGameActive(false);
+          setGameToken(null);
+          setErrorMessage('Game expired or reset. Ready to start a fresh round!');
+          setTimeout(() => setErrorMessage(null), 4000);
+          return;
+        }
+        throw new Error(data.error || 'Cashout failed');
+      }
 
       setGameActive(false);
+      setGameToken(null);
       setLastWon(true);
       setMinePositions(data.minePositions || []);
       sounds.playCashout();
@@ -201,7 +230,8 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
       setTotalProfit(prev => parseFloat((prev + data.profit).toFixed(2)));
       addToHistory(true, data.multiplier, data.profit);
     } catch (err: any) {
-      alert(err.message || "Cashout failed");
+      setErrorMessage(err.message || "Cashout failed");
+      setTimeout(() => setErrorMessage(null), 4000);
     }
   };
 
@@ -518,6 +548,12 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
 
           {/* Action Button */}
           <div>
+            {errorMessage && (
+              <div className="mb-3 px-3 py-2 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs font-mono text-center animate-in fade-in duration-200">
+                {errorMessage}
+              </div>
+            )}
+
             {gameActive ? (
               <div className="flex flex-col gap-2">
                 <button

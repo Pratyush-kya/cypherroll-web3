@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // Origin + rate-limit guard (30 crash bets/min per IP)
-    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 30, blockMs: 30_000 });
+    // Origin + rate-limit guard (120 crash bets/min per session/IP, soft 2s block)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 120, blockMs: 2_000 });
     if (guard) return guard;
     // Maintenance Circuit Breaker Guard
     if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('CRASH')) {

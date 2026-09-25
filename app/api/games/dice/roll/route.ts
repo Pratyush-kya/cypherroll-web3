@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // Origin + rate-limit guard (60 dice rolls/min per IP)
-    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 60, blockMs: 30_000 });
+    // Origin + rate-limit guard (180 dice rolls/min per session/IP, soft 2s block)
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 180, blockMs: 2_000 });
     if (guard) return guard;
 
     // Maintenance Circuit Breaker Guard

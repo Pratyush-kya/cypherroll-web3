@@ -52,9 +52,6 @@ export function validateOrigin(req: Request): NextResponse | null {
 // Note: In-memory rate limiting only works within a single Node.js instance.
 // For production serverless (Vercel), each instance has its own counter.
 // This provides soft protection; for hard limits, use Redis (UPSTASH_REDIS_REST_URL).
-//
-// Key: IP address (or wallet for real-mode bets)
-// Limit: configurable requests per window
 
 interface RateLimitRecord {
   count: number;
@@ -68,7 +65,7 @@ const rateLimitStore = new Map<string, RateLimitRecord>();
 export interface RateLimitOptions {
   windowMs: number;   // time window in ms
   maxRequests: number; // max requests per window
-  blockMs?: number;   // block duration on exceed (default: windowMs)
+  blockMs?: number;   // block duration on exceed (default: 3000ms max)
 }
 
 /**
@@ -78,7 +75,9 @@ export function checkRateLimit(
   key: string,
   options: RateLimitOptions
 ): NextResponse | null {
-  const { windowMs, maxRequests, blockMs = windowMs } = options;
+  const { windowMs, maxRequests, blockMs = 3000 } = options;
+  // Cap block duration to 3.5s max so legitimate human players are NEVER locked out for 18-30s
+  const effectiveBlockMs = Math.min(blockMs, 3500);
   const now = Date.now();
 
   let record = rateLimitStore.get(key);
@@ -91,9 +90,9 @@ export function checkRateLimit(
 
   // Reject if currently blocked
   if (record?.blocked) {
-    const retryAfter = Math.ceil((record.blockedUntil - now) / 1000);
+    const retryAfter = Math.max(1, Math.ceil((record.blockedUntil - now) / 1000));
     return NextResponse.json(
-      { error: `Too many requests. Try again in ${retryAfter}s.` },
+      { error: `Too many requests. Please wait ${retryAfter}s before retrying.` },
       {
         status: 429,
         headers: { 'Retry-After': String(retryAfter) },
@@ -111,11 +110,12 @@ export function checkRateLimit(
 
   if (record.count > maxRequests) {
     record.blocked = true;
-    record.blockedUntil = now + blockMs;
+    record.blockedUntil = now + effectiveBlockMs;
     rateLimitStore.set(key, record);
+    const retryAfter = Math.max(1, Math.ceil(effectiveBlockMs / 1000));
     return NextResponse.json(
-      { error: `Rate limit exceeded. Blocked for ${Math.ceil(blockMs / 1000)}s.` },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(blockMs / 1000)) } }
+      { error: `Rate limit reached. Please wait ${retryAfter}s.` },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
     );
   }
 
@@ -138,23 +138,23 @@ export function getClientIP(req: Request): string {
 /**
  * Apply both Origin validation AND rate limiting in one call.
  * Returns a NextResponse error if either check fails, or null if allowed.
- *
- * Usage:
- *   const guard = applyAPIGuard(req, { windowMs: 60000, maxRequests: 30 });
- *   if (guard) return guard;
  */
 export function applyAPIGuard(
   req: Request,
   rateLimitOptions: RateLimitOptions,
-  key?: string // custom rate limit key (defaults to IP)
+  key?: string // custom rate limit key (defaults to IP + session)
 ): NextResponse | null {
   // 1. Origin check
   const originError = validateOrigin(req);
   if (originError) return originError;
 
-  // 2. Rate limit check
+  // 2. Rate limit check - isolate by session/token so shared IPs (mobile/NAT) don't lock each other out
   const ip = getClientIP(req);
-  const rlKey = key || ip;
+  const cookie = req.headers.get('cookie') || '';
+  const sessionMatch = cookie.match(/cypher_session=([^;]+)/);
+  const sessionToken = sessionMatch ? sessionMatch[1].substring(0, 16) : '';
+  const rlKey = key || (sessionToken ? `${ip}_${sessionToken}` : ip);
+
   const rlError = checkRateLimit(rlKey, rateLimitOptions);
   if (rlError) return rlError;
 

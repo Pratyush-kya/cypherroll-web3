@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getOrCreatePlayer, lockPlayerWager } from '@/lib/supabase';
-import { calculateMinePositions, generateServerSeed } from '@/lib/provably-fair';
+import { calculateMinePositions } from '@/lib/provably-fair';
 import { verifySession } from '@/lib/auth';
 import { adminControlsState } from '@/lib/admin-controls-state';
-import { activeMinesGames } from '@/lib/mines-state';
+import { activeMinesGames, encodeMinesToken, ActiveMinesGame } from '@/lib/mines-state';
 import { applyAPIGuard } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // Origin + rate-limit guard (30 starts/min per IP)
-    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 30, blockMs: 30_000 });
+    // Generous gaming rate guard: 120 starts/min per session/IP, soft 2s block
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 120, blockMs: 2_000 });
     if (guard) return guard;
 
     if (adminControlsState.getMaintenanceMode() || adminControlsState.getEnginePaused('MINES')) {
@@ -38,11 +38,11 @@ export async function POST(req: Request) {
       const demoServerSeed = crypto.randomBytes(32).toString('hex');
       const demoServerSeedHash = crypto.createHash('sha256').update(demoServerSeed).digest('hex');
       const currentClientSeed = clientSeed || 'demo_player_seed';
-      const currentNonce = Math.floor(Math.random() * 10000) + 1;
+      const currentNonce = Math.floor(Math.random() * 100000) + 1;
 
       const minePositions = calculateMinePositions(demoServerSeed, currentClientSeed, currentNonce, mineCount);
 
-      activeMinesGames.set(walletAddress || 'Demo_Player', {
+      const game: ActiveMinesGame = {
         gameId,
         wallet: walletAddress || 'Demo_Player',
         mineCount,
@@ -54,11 +54,20 @@ export async function POST(req: Request) {
         clientSeed: currentClientSeed,
         nonce: currentNonce,
         isDemo: true,
-      });
+        createdAt: Date.now(),
+      };
+
+      // Store in memory cache with unique gameId as key to avoid demo multi-player collisions
+      activeMinesGames.set(gameId, game);
+      activeMinesGames.set(game.wallet, game);
+
+      // Generate stateless encrypted token
+      const gameToken = encodeMinesToken(game);
 
       return NextResponse.json({
         success: true,
         gameId,
+        gameToken,
         serverSeedHash: demoServerSeedHash,
         mineCount,
         isDemo: true,
@@ -77,7 +86,7 @@ export async function POST(req: Request) {
 
     const effectiveWallet = session.wallet;
 
-    if (walletAddress && session.wallet !== walletAddress) {
+    if (walletAddress && session.wallet.toLowerCase() !== walletAddress.toLowerCase()) {
       return NextResponse.json({ error: 'Session wallet mismatch: spoofing attempt rejected' }, { status: 403 });
     }
 
@@ -100,7 +109,7 @@ export async function POST(req: Request) {
 
     const minePositions = calculateMinePositions(serverSeed, currentClientSeed, currentNonce, mineCount);
 
-    activeMinesGames.set(effectiveWallet, {
+    const game: ActiveMinesGame = {
       gameId,
       wallet: effectiveWallet,
       mineCount,
@@ -112,15 +121,22 @@ export async function POST(req: Request) {
       clientSeed: currentClientSeed,
       nonce: currentNonce,
       isDemo: false,
-    });
+      createdAt: Date.now(),
+    };
+
+    activeMinesGames.set(gameId, game);
+    activeMinesGames.set(effectiveWallet, game);
+
+    const gameToken = encodeMinesToken(game);
 
     return NextResponse.json({
       success: true,
       gameId,
+      gameToken,
       serverSeedHash,
       mineCount,
       isDemo: false,
-      newBalance: lockResult.newBalance
+      newBalance: lockResult.newBalance,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });

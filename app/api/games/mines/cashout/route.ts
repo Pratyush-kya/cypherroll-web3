@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMinesMultiplier } from '@/lib/provably-fair';
-import { activeMinesGames } from '@/lib/mines-state';
+import { activeMinesGames, resolveMinesGame } from '@/lib/mines-state';
 import { recordAtomicBet, broadcastLiveBet, calculateDeterministicRakeback, getOrCreatePlayer, refundPlayerWager } from '@/lib/supabase';
 import { applyAPIGuard } from '@/lib/api-guard';
 
@@ -8,16 +8,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // Origin + rate-limit guard (60 cashouts/min)
-    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 60, blockMs: 15_000 });
+    // Generous cashout rate guard: 120 cashouts/min per session/IP, soft 2s block
+    const guard = applyAPIGuard(req, { windowMs: 60_000, maxRequests: 120, blockMs: 2_000 });
     if (guard) return guard;
 
     const body = await req.json();
-    const { walletAddress, gameId } = body;
+    const { walletAddress, gameId, gameToken, isDemo } = body;
 
-    const game = activeMinesGames.get(walletAddress || 'Demo_Player');
-    if (!game || game.gameId !== gameId) {
-      return NextResponse.json({ error: 'Game not found or expired' }, { status: 404 });
+    // Resilient multi-tier resolution: checks encrypted stateless token first, then memory caches
+    const game = resolveMinesGame({ gameToken, gameId, walletAddress });
+    if (!game) {
+      return NextResponse.json({
+        error: 'Game not found or expired. Please start a new game.',
+        code: 'GAME_EXPIRED',
+      }, { status: 404 });
     }
 
     if (game.revealedTiles.length === 0) {
@@ -26,10 +30,12 @@ export async function POST(req: Request) {
 
     const gemsRevealed = game.revealedTiles.length;
     const currentMultiplier = getMinesMultiplier(game.mineCount, gemsRevealed);
-    
+
     const payout = parseFloat((game.wager * currentMultiplier).toFixed(2));
     const profit = parseFloat((payout - game.wager).toFixed(2));
 
+    // Clear active game from caches
+    activeMinesGames.delete(game.gameId);
     activeMinesGames.delete(game.wallet);
 
     if (game.isDemo) {
