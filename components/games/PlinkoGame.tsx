@@ -100,7 +100,7 @@ export default function PlinkoGame({
     nonce?: number;
   }>({});
 
-  const multipliers = getPlinkoMultipliers(rows, risk);
+  const multipliers = getPlinkoMultipliers(rows, risk, playMode === 'AUTO');
 
   // Single Drop Action
   const executeDrop = useCallback(async () => {
@@ -129,6 +129,7 @@ export default function PlinkoGame({
           risk,
           clientSeed,
           isDemo: Boolean(isDemoMode),
+          isAuto: playMode === 'AUTO',
         }),
       });
 
@@ -252,8 +253,9 @@ export default function PlinkoGame({
 
   const startAutoDrop = () => {
     if (wager <= 0 || wager > balance) return;
+    const safeTotal = Math.min(30, Math.max(1, autoTotal));
     setIsAutoActive(true);
-    setAutoRemaining(autoTotal);
+    setAutoRemaining(safeTotal);
   };
 
   // Controlled, single-cadence auto-drop loop (no cascading re-renders)
@@ -262,7 +264,7 @@ export default function PlinkoGame({
       // Fire single initial drop
       executeDropRef.current();
 
-      // Paced cadence (650ms) - drops exactly 1 ball per beat
+      // Paced cadence (700ms) - drops exactly 1 ball per beat
       autoIntervalRef.current = setInterval(() => {
         setAutoRemaining((prev) => {
           if (prev <= 1 && prev !== -1) {
@@ -272,7 +274,7 @@ export default function PlinkoGame({
           executeDropRef.current();
           return prev === -1 ? -1 : prev - 1;
         });
-      }, 650);
+      }, 700);
     } else {
       if (autoIntervalRef.current) {
         clearInterval(autoIntervalRef.current);
@@ -365,7 +367,7 @@ export default function PlinkoGame({
               <CircleDot className="w-5 h-5 text-cyan-400" />
               <span className="font-heading text-sm font-bold text-foreground">CypherPlinko 3D</span>
               <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                ~98.0% RTP
+                {playMode === 'AUTO' ? '~94.5% RTP (Strict Auto)' : '~97.5% RTP'}
               </span>
               {inFlightCount > 0 && (
                 <span className="text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full animate-pulse">
@@ -587,16 +589,18 @@ export default function PlinkoGame({
             {/* Auto Mode Specific Options */}
             {playMode === 'AUTO' && (
               <div className="mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
-                <label className="block text-[10px] font-mono text-slate-500 mb-1.5 uppercase">
-                  Number of Bets
-                </label>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-mono text-slate-500 uppercase">
+                    Restricted Auto-Drops (Max 30)
+                  </label>
+                  <span className="text-[9px] font-mono text-amber-400 font-bold">Strict Cap</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { label: '5', val: 5 },
-                    { label: '10', val: 10 },
-                    { label: '25', val: 25 },
-                    { label: '50', val: 50 },
-                    { label: '∞', val: -1 },
+                    { label: '5 Drops', val: 5 },
+                    { label: '10 Drops', val: 10 },
+                    { label: '20 Drops', val: 20 },
+                    { label: '30 Max', val: 30 },
                   ].map((opt) => (
                     <button
                       key={opt.label}
@@ -615,6 +619,10 @@ export default function PlinkoGame({
                       {opt.label}
                     </button>
                   ))}
+                </div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-900 text-[10px] font-mono text-slate-500">
+                  <span>Paced Cadence: 700ms/drop</span>
+                  <span className="text-amber-400 font-bold">Auto House Edge: 5.5%</span>
                 </div>
               </div>
             )}

@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { walletAddress, wager, rows, risk, clientSeed, isDemo } = body;
+    const { walletAddress, wager, rows, risk, clientSeed, isDemo, isAuto } = body;
 
     if (!wager || !rows || !risk) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
       const path = calculatePlinkoPath(demoServerSeed, currentClientSeed, currentNonce, rows);
       const slot = getPlinkoSlot(path);
-      const multipliers = getPlinkoMultipliers(rows, risk as any);
+      const multipliers = getPlinkoMultipliers(rows, risk as any, Boolean(isAuto));
       const multiplier = multipliers[slot];
       const payout = parseFloat((wager * multiplier).toFixed(2));
       const profit = parseFloat((payout - wager).toFixed(2));
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     // 2. Server-Authoritative Cryptographic Calculation
     const path = calculatePlinkoPath(serverSeed, currentClientSeed, currentNonce, rows);
     const slot = getPlinkoSlot(path);
-    const multipliers = getPlinkoMultipliers(rows, risk as any);
+    const multipliers = getPlinkoMultipliers(rows, risk as any, Boolean(isAuto));
     const multiplier = multipliers[slot];
     
     const payout = parseFloat((wager * multiplier).toFixed(2));
