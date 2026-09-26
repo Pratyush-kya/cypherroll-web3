@@ -102,6 +102,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
+function isValidDiscordWebhook(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  return (
+    trimmed.startsWith('https://discord.com/api/webhooks/') ||
+    trimmed.startsWith('https://discordapp.com/api/webhooks/')
+  );
+}
+
 export async function GET(req: NextRequest) {
   const adminGuard = req.headers.get('x-admin-guard');
   if (adminGuard !== 'cypher-authenticated') {
@@ -109,15 +118,29 @@ export async function GET(req: NextRequest) {
   }
 
   const tickets = [...globalStore.supportTickets].reverse();
-  const currentWebhook = globalStore.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL || '';
-  const maskedWebhook = currentWebhook
+  const currentWebhook = (globalStore.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL || '').trim();
+  const isChannelUrl = currentWebhook.includes('discord.com/channels/');
+  const isValidWebhook = isValidDiscordWebhook(currentWebhook);
+
+  let webhookStatus = 'Not Configured';
+  if (isValidWebhook) {
+    webhookStatus = 'Connected';
+  } else if (isChannelUrl) {
+    webhookStatus = 'Channel Link (Need Webhook URL)';
+  } else if (currentWebhook) {
+    webhookStatus = 'Invalid Webhook URL';
+  }
+
+  const maskedWebhook = isValidWebhook
     ? currentWebhook.replace(/(webhooks\/\d+\/)(.+)/, '$1************')
-    : '';
+    : (isChannelUrl ? currentWebhook : '');
 
   return NextResponse.json({
     tickets,
-    webhookConfigured: Boolean(currentWebhook),
-    maskedWebhook
+    webhookConfigured: isValidWebhook,
+    webhookStatus,
+    isChannelUrl,
+    maskedWebhook,
   });
 }
 
@@ -159,7 +182,20 @@ export async function PUT(req: NextRequest) {
       if (!webhookUrl || typeof webhookUrl !== 'string') {
         return NextResponse.json({ error: 'Invalid webhook URL provided' }, { status: 400 });
       }
-      globalStore.discordWebhookUrl = webhookUrl.trim();
+
+      const trimmed = webhookUrl.trim();
+      if (!isValidDiscordWebhook(trimmed)) {
+        if (trimmed.includes('discord.com/channels/')) {
+          return NextResponse.json({
+            error: 'You entered a Discord Channel browser link (discord.com/channels/...). You need a Webhook URL (starts with https://discord.com/api/webhooks/...). To create one: In Discord, go to Channel Settings ➔ Integrations ➔ Webhooks ➔ New Webhook ➔ Copy Webhook URL.'
+          }, { status: 400 });
+        }
+        return NextResponse.json({
+          error: 'Invalid URL. Discord Webhook URLs must start with https://discord.com/api/webhooks/...'
+        }, { status: 400 });
+      }
+
+      globalStore.discordWebhookUrl = trimmed;
       return NextResponse.json({
         success: true,
         message: 'Discord Webhook URL updated successfully in server memory'
@@ -170,6 +206,19 @@ export async function PUT(req: NextRequest) {
       const targetUrl = (webhookUrl || globalStore.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL || '').trim();
       if (!targetUrl) {
         return NextResponse.json({ error: 'No Discord Webhook URL has been configured yet' }, { status: 400 });
+      }
+
+      if (!isValidDiscordWebhook(targetUrl)) {
+        if (targetUrl.includes('discord.com/channels/')) {
+          return NextResponse.json({
+            success: false,
+            error: 'Discord Delivery Blocked: The configured URL is a Discord Channel link (discord.com/channels/...), not an API Webhook URL. Please generate a Webhook URL in Discord (Channel Settings ➔ Integrations ➔ Webhooks ➔ Copy Webhook URL).'
+          }, { status: 400 });
+        }
+        return NextResponse.json({
+          success: false,
+          error: 'The configured URL is not a valid Discord Webhook URL (must start with https://discord.com/api/webhooks/...)'
+        }, { status: 400 });
       }
 
       const testPayload = {
@@ -203,13 +252,13 @@ export async function PUT(req: NextRequest) {
         const errText = await res.text();
         return NextResponse.json({
           success: false,
-          error: `Discord responded with HTTP ${res.status}: ${errText}`
+          error: `Discord rejected the request with HTTP ${res.status}: ${errText}`
         }, { status: 400 });
       }
 
       return NextResponse.json({
         success: true,
-        message: 'Test message delivered to Discord successfully!'
+        message: 'Test message delivered to Discord successfully! Check your Discord channel.'
       });
     }
 

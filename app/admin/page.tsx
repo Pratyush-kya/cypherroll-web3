@@ -69,7 +69,9 @@ export default function AdminCommandCenter() {
       const res = await fetch("/api/support", { headers: { "x-admin-guard": "cypher-authenticated" } });
       const data = await res.json();
       if (data.tickets) setTickets(data.tickets);
-      if (data.webhookConfigured !== undefined) {
+      if (data.webhookStatus) {
+        setDiscordWebhookStatus(data.webhookStatus);
+      } else if (data.webhookConfigured !== undefined) {
         setDiscordWebhookStatus(data.webhookConfigured ? 'Connected' : 'Not Configured');
       }
     } catch (e) {}
@@ -1431,6 +1433,26 @@ export default function AdminCommandCenter() {
                       <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                     )}
                     <span>{testResult.message}</span>
+                  </div>
+                )}
+
+                {discordWebhookStatus.includes('Channel Link') && (
+                  <div className="p-3.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-xs font-mono text-amber-200 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-amber-300">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>DISCORD CHANNEL LINK DETECTED (ACTION REQUIRED)</span>
+                    </div>
+                    <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                      You pasted a Discord channel browser URL (<code className="text-white bg-black/40 px-1 py-0.5 rounded">discord.com/channels/...</code>). Discord cannot deliver automated webhook posts to a browser page URL.
+                    </p>
+                    <div className="bg-black/40 p-3 rounded-lg border border-amber-500/20 text-[11px] text-zinc-300 space-y-1.5">
+                      <p className="font-bold text-amber-400">⚡ How to get your real Discord Webhook URL in 15 seconds:</p>
+                      <p>1. In Discord, right-click your channel (<code className="text-emerald-400">#support</code>) and select <strong>⚙️ Edit Channel</strong>.</p>
+                      <p>2. In the left sidebar, click <strong>Integrations</strong>.</p>
+                      <p>3. Click <strong>Webhooks</strong> ➔ <strong>New Webhook</strong> (or select an existing one).</p>
+                      <p>4. Click <strong>"Copy Webhook URL"</strong> (it will start with <code className="text-emerald-400">https://discord.com/api/webhooks/...</code>).</p>
+                      <p>5. Paste it in the input above and click <strong>"Save URL"</strong> (or update in Vercel).</p>
+                    </div>
                   </div>
                 )}
 
