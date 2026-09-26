@@ -734,6 +734,61 @@ Crash Point = floor((100 * E - HouseEdge) / (E - H))</code></pre>
           Engineered <code>lib/security/pow-challenge.ts</code> and <code>lib/security/pow-client.ts</code>. Issues HMAC-signed SHA-256 challenges solved in ~30ms via the browser Web Crypto API, neutralizing Tor bot floods without invasive CAPTCHAs. Verified via <code>/api/security/pow</code>.
         </p>
       </div>
+    <!-- SECTION 7: ULTRA-SAFE CLIENT ANTI-TAMPER & CRYPTOGRAPHIC CHAT -->
+    <section id="anti-tamper-security">
+      <h2>7. Ultra-Safe Client Anti-Tamper & Cryptographic Chat Architecture</h2>
+      <p>
+        To ensure total platform integrity and prevent unauthorized inspection, scraping, or tampering, CypherRoll implements a multi-tier defense architecture across client, transport, and server layers:
+      </p>
+
+      <div class="card">
+        <h3>1. Anti-DevTools & Client-Side Anti-Tamper Sentinel (Operational)</h3>
+        <p>
+          Engineered <code>components/security/AntiTamperGuard.tsx</code> and integrated globally in <code>app/layout.tsx</code>:
+        </p>
+        <ul style="margin: 10px 0 10px 20px; font-size: 0.88rem; color: var(--text-muted);">
+          <li><strong>Keyboard Traps:</strong> Actively intercepts and suppresses <code>F12</code>, <code>Ctrl+Shift+I</code> / <code>Cmd+Option+I</code> (Inspect), <code>Ctrl+Shift+J</code> (Console), <code>Ctrl+Shift+C</code> (Elements), and <code>Ctrl+U</code> (View Source).</li>
+          <li><strong>Context Menu Blocker:</strong> Disables standard right-click "Inspect Element" across the entire casino UI.</li>
+          <li><strong>Viewport & Console Sentinel:</strong> Measures browser outer vs. inner viewport differentials to detect detached or docked developer inspection windows, logging authoritative warnings.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>2. Server-Authoritative Zero-Trust Consensus (Tamper-Proof)</h3>
+        <p>
+          Even if an adversary attempts to alter DOM text (e.g. editing HTML to display a $1,000,000 balance) or execute overrides in the browser console:
+        </p>
+        <ul style="margin: 10px 0 10px 20px; font-size: 0.88rem; color: var(--text-muted);">
+          <li><strong>100% Server-Executed Math:</strong> Dice rolls, crash multipliers, and mine positions are calculated strictly on the server using HMAC-SHA256 commit-reveal seed chains. The client never knows outcomes in advance.</li>
+          <li><strong>Atomic Balance Verification:</strong> Wagers and payouts validate against server database records locked with <code>SELECT ... FOR UPDATE</code>. Fake client values are immediately rejected.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>3. AES-256-GCM + HMAC-SHA256 Encrypted Chat & Persistence</h3>
+        <p>
+          Engineered <code>lib/crypto-chat.ts</code> and upgraded <code>components/rollbit/Trollbox.tsx</code> & <code>app/api/trollbox/route.ts</code>:
+        </p>
+        <ul style="margin: 10px 0 10px 20px; font-size: 0.88rem; color: var(--text-muted);">
+          <li><strong>Symmetric Encryption:</strong> Chat messages are encrypted with AES-256-GCM authenticated cipher with a unique 12-byte random IV before storing or broadcasting.</li>
+          <li><strong>Tamper-Proof Signatures:</strong> Every message is signed with HMAC-SHA256. Any message altered in transit or database fails verification and is rejected.</li>
+          <li><strong>Zero Auto-Deletion:</strong> Smart deduplication and client <code>localStorage</code> caching ensure messages persist permanently across serverless cold starts.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>4. Production HTTP Security Headers</h3>
+        <p>
+          Configured in <code>next.config.mjs</code>:
+        </p>
+        <div class="code-block">
+X-Frame-Options: DENY                        (Anti-Clickjacking)
+X-Content-Type-Options: nosniff              (Anti-MIME Sniffing)
+Referrer-Policy: strict-origin-when-cross-origin
+X-XSS-Protection: 1; mode=block
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+        </div>
+      </div>
     </section>
 
     <footer>

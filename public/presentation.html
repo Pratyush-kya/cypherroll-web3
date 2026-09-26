@@ -908,20 +908,42 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="glass-card rounded-2xl p-5 border-cyan-500/20 space-y-3">
-            <div class="text-cyan-400 text-2xl font-mono">⚡ 01</div>
-            <h4 class="font-bold text-white text-sm">Proof-of-Work Challenge</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="glass-card rounded-2xl p-5 border-emerald-500/20 space-y-3">
+            <div class="text-emerald-400 text-2xl font-mono">🛡️ 01</div>
+            <h4 class="font-bold text-white text-sm">Anti-DevTools & Client Sentinel</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
-              High-frequency automated endpoints demand client-side SHA-256 hash prefix collision before processing bets, rendering DDoS bots economically impossible.
+              Disables right-click <code class="text-emerald-300">Inspect</code>, blocks keyboard shortcuts (<code class="text-emerald-300">F12</code>, <code class="text-emerald-300">Ctrl+Shift+I/J/C</code>, <code class="text-emerald-300">Ctrl+U</code>), and monitors window dimension anomalies to intercept inspection docks.
+            </p>
+            <div class="text-[10px] font-mono text-emerald-300 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
+              Active console sentinel warns & suppresses client tampering.
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-cyan-500/20 space-y-3">
+            <div class="text-cyan-400 text-2xl font-mono">⚡ 02</div>
+            <h4 class="font-bold text-white text-sm">Zero-Trust Server Consensus</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Client DOM manipulation (e.g. altering displayed balance to $1,000,000 via console) is 100% impotent. All wagers, outcomes, seeds, and balances are computed authoritatively on-server.
             </p>
             <div class="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 p-2 rounded border border-cyan-500/20">
-              Diff: 4 leading hex zeroes (Average 65k hashes per request)
+              Zero-Trust: Client requests are signed cryptographic proposals.
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-purple-500/20 space-y-3">
+            <div class="text-purple-400 text-2xl font-mono">🔐 03</div>
+            <h4 class="font-bold text-white text-sm">AES-256-GCM + SHA-256 Chat</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Trollbox messages are encrypted with AES-256-GCM authenticated cipher and signed with HMAC-SHA256 for non-repudiation. Smart deduplication & client cache prevent auto-deletion across serverless lambdas.
+            </p>
+            <div class="text-[10px] font-mono text-purple-300 bg-purple-500/10 p-2 rounded border border-purple-500/20">
+              Verified badge · Tamper-proof digital signatures.
             </div>
           </div>
 
           <div class="glass-card rounded-2xl p-5 border-amber-500/20 space-y-3">
-            <div class="text-amber-400 text-2xl font-mono">🔒 02</div>
+            <div class="text-amber-400 text-2xl font-mono">🔒 04</div>
             <h4 class="font-bold text-white text-sm">PostgreSQL Row Locks</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
               Every balance update executes inside an atomic transaction using <code class="text-amber-300">SELECT ... FOR UPDATE</code>. Parallel race conditions cannot double-spend wallet balances.
@@ -932,24 +954,24 @@
           </div>
 
           <div class="glass-card rounded-2xl p-5 border-violet-500/20 space-y-3">
-            <div class="text-violet-400 text-2xl font-mono">⏱️ 03</div>
-            <h4 class="font-bold text-white text-sm">Session-Isolated Rate Limit</h4>
+            <div class="text-violet-400 text-2xl font-mono">⏱️ 05</div>
+            <h4 class="font-bold text-white text-sm">Proof-of-Work & Cooldowns</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
-              API routes implement a strict 2-3 second soft cooldown per wallet address. Rapid clicking or packet flooding triggers HTTP 429 backoff penalties.
+              High-frequency endpoints demand client SHA-256 prefix collision challenges. Rapid clicking or packet flooding triggers HTTP 429 backoff penalties.
             </p>
             <div class="text-[10px] font-mono text-violet-300 bg-violet-500/10 p-2 rounded border border-violet-500/20">
-              Auto-drop rate capped to 700ms single-flight.
+              Diff: 4 leading hex zeroes (Average 65k hashes per request)
             </div>
           </div>
 
-          <div class="glass-card rounded-2xl p-5 border-emerald-500/20 space-y-3">
-            <div class="text-emerald-400 text-2xl font-mono">💎 04</div>
-            <h4 class="font-bold text-white text-sm">VIP Tier Rakeback Engine</h4>
+          <div class="glass-card rounded-2xl p-5 border-rose-500/20 space-y-3">
+            <div class="text-rose-400 text-2xl font-mono">🛡️ 06</div>
+            <h4 class="font-bold text-white text-sm">Production Security Headers</h4>
             <p class="text-xs text-slate-400 leading-relaxed">
-              A dynamic rewards ledger tracks turnover volume and returns 5% to 15% of the house edge directly back to players, driving loyalty while sustaining guaranteed operator margins.
+              Enforces <code class="text-rose-300">X-Frame-Options: DENY</code> (anti-clickjacking), <code class="text-rose-300">X-Content-Type-Options: nosniff</code>, strict Referrer policies, and sanitized origin isolation.
             </p>
-            <div class="text-[10px] font-mono text-emerald-300 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
-              Bronze: 5% • Silver: 8% • Gold: 12% • Diamond: 15%
+            <div class="text-[10px] font-mono text-rose-300 bg-rose-500/10 p-2 rounded border border-rose-500/20">
+              MIME sniffing & iframe embedding blocked natively.
             </div>
           </div>
         </div>
@@ -957,27 +979,27 @@
         <!-- Concurrency Sequence Diagram (Rendered visually) -->
         <div class="glass-panel rounded-2xl p-6 border border-white/10">
           <h4 class="font-bold text-sm text-white font-mono mb-4 flex items-center gap-2">
-            <span>🔄</span> Atomic Transaction Sequence & Anti-Race Guarantee
+            <span>🔄</span> Zero-Trust Defense Workflow & Atomic Execution
           </h4>
           <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono">
+            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-emerald-500/30 text-center">
+              <div class="text-emerald-400 font-bold mb-1">1. Client Sentinel</div>
+              <div class="text-[11px] text-slate-400">Blocks F12, inspect shortcuts, and prototype tampering</div>
+            </div>
+            <div class="text-slate-500 text-lg">➔</div>
             <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-cyan-500/30 text-center">
-              <div class="text-cyan-400 font-bold mb-1">1. Bet Submission</div>
-              <div class="text-[11px] text-slate-400">Client sends signed wager + Client Seed</div>
+              <div class="text-cyan-400 font-bold mb-1">2. Crypto Handshake</div>
+              <div class="text-[11px] text-slate-400">Signed cypher_session cookie + client seed committed</div>
             </div>
             <div class="text-slate-500 text-lg">➔</div>
             <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-amber-500/30 text-center">
-              <div class="text-amber-400 font-bold mb-1">2. DB Row Lock</div>
-              <div class="text-[11px] text-slate-400">PostgreSQL locks user balance row exclusively</div>
+              <div class="text-amber-400 font-bold mb-1">3. Atomic DB Lock</div>
+              <div class="text-[11px] text-slate-400">PostgreSQL SELECT FOR UPDATE locks balance row</div>
             </div>
             <div class="text-slate-500 text-lg">➔</div>
-            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-violet-500/30 text-center">
-              <div class="text-violet-400 font-bold mb-1">3. Crypto Compute</div>
-              <div class="text-[11px] text-slate-400">HMAC-SHA256 determines win/loss & multiplier</div>
-            </div>
-            <div class="text-slate-500 text-lg">➔</div>
-            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-emerald-500/30 text-center">
-              <div class="text-emerald-400 font-bold mb-1">4. Atomic Commit</div>
-              <div class="text-[11px] text-slate-400">Balance updated & row lock released</div>
+            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-purple-500/30 text-center">
+              <div class="text-purple-400 font-bold mb-1">4. HMAC-SHA256 Math</div>
+              <div class="text-[11px] text-slate-400">Server computes outcome, credits balance, releases lock</div>
             </div>
           </div>
         </div>
@@ -1131,7 +1153,7 @@
       "CypherCrash features real-time rocket telemetry. Highlight the 3% instant crash bust at 1.00x, which provides the casino's guaranteed 3% margin. The exponential trajectory follows M(t) = e^(0.06t).",
       "CypherMines starts at 10 mines (40% initial bust risk). Low-risk presets of 1, 3, and 5 mines have been removed to eliminate low-variance grinding. Stateless AES-256-GCM tokens prevent serverless restarts from causing game expired errors.",
       "Plinko models a real Galton board with 2^N paths. Address the user's specific concern about auto-drop bleeding money: we mitigated this by introducing dual multipliers (compressing center slots to 0.2x-0.4x) and putting a hard 30-drop cap with a 700ms cadence timer.",
-      "Cover our defensive architecture: Proof-of-Work anti-DDoS, distributed rate limiters, PostgreSQL row locks (SELECT FOR UPDATE) to eliminate race conditions, and our VIP rakeback system.",
+      "Cover our 6-pillar defense architecture: 1) Client Anti-DevTools Sentinel intercepting F12, inspect shortcuts, and right-click; 2) Zero-Trust server consensus guaranteeing that local DOM tampering or console overrides cannot modify balances; 3) AES-256-GCM encrypted chat with HMAC-SHA256 digital signatures and smart client deduplication preventing auto-deletion; 4) PostgreSQL atomic row locks (SELECT FOR UPDATE) preventing double-spending; 5) Proof-of-Work anti-DDoS challenge; and 6) Hardened production HTTP security headers.",
       "Demonstrate live in-browser cryptographic verification. Show that any user can paste their seeds into this exact tool and verify their game outcome with standard Web Crypto APIs."
     ];
 
