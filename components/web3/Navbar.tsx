@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { LifeBuoy, ShieldCheck, Wallet, Flame, Crown, Landmark, MessageSquare, KeyRound, LogOut, Sparkles, Terminal, ChevronDown, Bomb, Layers } from 'lucide-react';
+import { LifeBuoy, ShieldCheck, Wallet, Flame, Crown, Landmark, MessageSquare, KeyRound, LogOut, Sparkles, ChevronDown, Bomb, Layers } from 'lucide-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { truncateHash } from '@/lib/utils';
