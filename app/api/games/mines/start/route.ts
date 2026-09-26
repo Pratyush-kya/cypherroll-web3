@@ -28,8 +28,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    if (wager <= 0 || wager < 1 || wager > 500 || mineCount < 1 || mineCount > 24) {
-      return NextResponse.json({ error: 'Invalid bet parameters. Wager must be $1–$500. Mine count must be 1-24.' }, { status: 400 });
+    if (wager <= 0 || wager < 1 || wager > 500 || mineCount < 10 || mineCount > 24) {
+      return NextResponse.json({ error: 'Invalid bet parameters. Wager must be $1–$500. Mine count must be 10–24.' }, { status: 400 });
     }
 
     const gameId = crypto.randomUUID();

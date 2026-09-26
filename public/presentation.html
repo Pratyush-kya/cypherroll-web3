@@ -742,8 +742,8 @@
           </h4>
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mb-4">
             <div>
-              <label class="text-xs text-slate-400 font-mono block mb-1">Mines Count (1 - 24):</label>
-              <input id="calc-mines" type="number" min="1" max="24" value="3" onchange="calculateMinesProgression()" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-sm focus:border-cyan-500 outline-none">
+              <label class="text-xs text-slate-400 font-mono block mb-1">Mines Count (10 - 24):</label>
+              <input id="calc-mines" type="number" min="10" max="24" value="10" onchange="calculateMinesProgression()" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-sm focus:border-cyan-500 outline-none">
             </div>
             <div>
               <label class="text-xs text-slate-400 font-mono block mb-1">Gems Picked:</label>
@@ -1348,7 +1348,7 @@
 
     // ================= 2. MINES CALCULATOR =================
     function calculateMinesProgression() {
-      const mines = parseInt(document.getElementById('calc-mines').value) || 3;
+      const mines = parseInt(document.getElementById('calc-mines').value) || 10;
       const gems = parseInt(document.getElementById('calc-gems').value) || 4;
       const totalTiles = 25;
       const safeTiles = totalTiles - mines;

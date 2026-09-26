@@ -29,10 +29,10 @@ interface MinesGameProps {
 }
 
 const MINE_PRESETS = [
-  { count: 1, label: '1 Mine', risk: '96% Safe' },
-  { count: 3, label: '3 Mines', risk: 'Standard' },
-  { count: 5, label: '5 Mines', risk: 'Spicy' },
-  { count: 10, label: '10 Mines', risk: 'High Risk' },
+  { count: 10, label: '10 Mines', risk: 'Default / 15 Safe' },
+  { count: 12, label: '12 Mines', risk: 'Challenging' },
+  { count: 15, label: '15 Mines', risk: 'High Risk' },
+  { count: 20, label: '20 Mines', risk: 'Extreme' },
   { count: 24, label: '24 Mines', risk: '24.5× Jackpot' },
 ];
 
@@ -458,13 +458,17 @@ export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced
               </div>
               <input
                 type="range"
-                min="1"
+                min="10"
                 max="24"
                 step="1"
                 value={mineCount}
-                onChange={(e) => setMineCount(parseInt(e.target.value))}
+                onChange={(e) => setMineCount(Math.max(10, Math.min(24, parseInt(e.target.value) || 10)))}
                 className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
               />
+              <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                <span>Min: 10 Mines</span>
+                <span>Max: 24 Mines</span>
+              </div>
             </div>
           )}
 
