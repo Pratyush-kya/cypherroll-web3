@@ -52,17 +52,18 @@ export function calculateDiceRoll(serverSeed: string, clientSeed: string, nonce:
 }
 
 /**
- * Calculate Dice Payout Multiplier with 1.0% House Edge.
- * Target is Roll Under [1.00 to 98.00].
+ * Calculate Dice Payout Multiplier with 4.0% House Edge (96.0% RTP).
+ * Target is Roll Under [1.00 to 95.00].
+ * Uses strict floor-truncation to ensure mathematical margin protection for the operator.
  */
 export function getDiceMultiplier(targetNumber: number): number {
-  if (targetNumber < 1 || targetNumber > 98) {
-    throw new Error("Target number must be between 1.00 and 98.00");
+  if (targetNumber < 1 || targetNumber > 95) {
+    throw new Error("Target number must be between 1.00 and 95.00");
   }
-  const houseEdge = 0.02; // 2% house edge (98% RTP) — industry standard range
+  const houseEdge = 0.04; // 4.0% house edge (96.0% RTP) — optimal commercial profitability
   const winProbability = targetNumber / 100;
-  const multiplier = ((1 - houseEdge) / winProbability);
-  return parseFloat(multiplier.toFixed(4));
+  const rawMultiplier = (1 - houseEdge) / winProbability;
+  return Math.floor(rawMultiplier * 10000) / 10000;
 }
 
 /**

@@ -37,7 +37,7 @@ const MINE_PRESETS = [
 ];
 
 export default function MinesGame({ userWallet, balance, setBalance, onBetPlaced, isDemoMode }: MinesGameProps) {
-  const [mineCount, setMineCount] = useState<number>(3);
+  const [mineCount, setMineCount] = useState<number>(10);
   const [wager, setWager] = useState<number>(10);
   const [gameActive, setGameActive] = useState<boolean>(false);
   const [gameId, setGameId] = useState<string>('');

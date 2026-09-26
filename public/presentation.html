@@ -338,8 +338,8 @@
           <div class="glass-card rounded-xl p-4 text-center border-amber-500/20">
             <div class="text-2xl mb-1">🎲</div>
             <div class="font-bold text-sm text-white">CypherDice</div>
-            <div class="text-xs text-amber-400 font-mono mt-1">98.00% RTP (2% Edge)</div>
-            <div class="text-[11px] text-slate-400 mt-1">Target range 1.00 – 98.00</div>
+            <div class="text-xs text-amber-400 font-mono mt-1">96.00% RTP (4% Edge)</div>
+            <div class="text-[11px] text-slate-400 mt-1">Target range 2.00 – 95.00</div>
           </div>
 
           <div class="glass-card rounded-xl p-4 text-center border-rose-500/20">
@@ -353,7 +353,7 @@
             <div class="text-2xl mb-1">💣</div>
             <div class="font-bold text-sm text-white">CypherMines</div>
             <div class="text-xs text-emerald-400 font-mono mt-1">97.00% RTP (3% Edge)</div>
-            <div class="text-[11px] text-slate-400 mt-1">25 Tiles, 1-24 Mines</div>
+            <div class="text-[11px] text-slate-400 mt-1">Starts with 10 Mines (40% Bust Risk)</div>
           </div>
 
           <div class="glass-card rounded-xl p-4 text-center border-cyan-500/20">
@@ -464,9 +464,9 @@
           <div class="flex items-center gap-2 text-amber-400 font-mono text-xs mb-1">
             <span>GAME ENGINE 01</span> • <span>LINEAR RANDOM MAPPING</span>
           </div>
-          <h2 class="text-3xl font-extrabold text-white">CypherDice: 98.00% Constant RTP Model</h2>
+          <h2 class="text-3xl font-extrabold text-white">CypherDice: 96.00% Optimal RTP Model</h2>
           <p class="text-sm text-slate-400">
-            How the dynamic target slider preserves an exact, uncompromised 2.00% House Edge across every wager.
+            How the dynamic target slider preserves an exact, uncompromised 4.00% House Edge with max profit safeguards for the operator.
           </p>
         </div>
 
@@ -484,7 +484,7 @@
                 $$\text{Roll Outcome} = \frac{\lfloor \text{Float} \times 10000 \rfloor}{100} \in [0.00, 99.99]$$
               </div>
               <p class="text-xs text-slate-400">
-                Win Condition: <span class="text-emerald-400 font-mono font-bold">Roll &lt; Target</span> where Target $\in [1.00, 98.00]$.
+                Win Condition: <span class="text-emerald-400 font-mono font-bold">Roll &lt; Target</span> where Target $\in [2.00, 95.00]$.
               </p>
             </div>
 
@@ -493,13 +493,13 @@
                 <span>💰</span> 2. Payout Multiplier & House Edge Equation
               </h4>
               <p class="text-xs text-slate-300 leading-relaxed">
-                A theoretical zero-edge multiplier is $100 / \text{Target}$. Applying the 2% house commission ($HE = 0.02$) yields:
+                A theoretical zero-edge multiplier is $100 / \text{Target}$. Applying the 4% house commission ($HE = 0.04$) with floor truncation yields:
               </p>
               <div class="math-block text-xs font-mono">
-                $$\text{Multiplier} = \frac{100 - \text{House Edge}}{\text{Target}} = \frac{98.00}{\text{Target}}$$
+                $$\text{Multiplier} = \left\lfloor \frac{100 - \text{House Edge}}{\text{Target}} \times 10000 \right\rfloor / 10000 = \frac{96.00}{\text{Target}}$$
               </div>
               <div class="bg-slate-900 p-3 rounded-lg border border-white/5 text-xs font-mono text-slate-300">
-                <span class="text-amber-400">Example:</span> Target = 50.00 $\implies$ Multiplier = $98.00 / 50.00 = 1.96\times$. Win Probability = 50.00%.
+                <span class="text-amber-400">Example:</span> Target = 50.00 $\implies$ Multiplier = $96.00 / 50.00 = 1.9200\times$. Win Probability = 50.00%.
               </div>
             </div>
 
@@ -511,8 +511,8 @@
                 The expected return of a $1 bet for any chosen Target $T$ is mathematically constant:
               </p>
               <div class="math-block text-xs font-mono text-emerald-300">
-                $$E[X] = P(\text{Win}) \times \text{Multiplier} = \left(\frac{T}{100}\right) \times \left(\frac{98}{T}\right) = \frac{98}{100} = 0.98$$
-                $$\text{RTP} = 98.00\% \quad \Longleftrightarrow \quad \text{House Edge} = 2.00\% \quad \forall T \in [1, 98]$$
+                $$E[X] = P(\text{Win}) \times \text{Multiplier} = \left(\frac{T}{100}\right) \times \left(\frac{96}{T}\right) = \frac{96}{100} = 0.96$$
+                $$\text{RTP} = 96.00\% \quad \Longleftrightarrow \quad \text{House Edge} = 4.00\% \quad \forall T \in [2, 95]$$
               </div>
             </div>
           </div>

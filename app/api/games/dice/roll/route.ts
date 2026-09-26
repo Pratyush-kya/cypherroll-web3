@@ -28,8 +28,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    if (wager <= 0 || wager < 1 || wager > 500 || target < 2 || target > 98) {
-      return NextResponse.json({ error: 'Invalid bet parameters. Wager must be $1–$500.' }, { status: 400 });
+    if (wager <= 0 || wager < 1 || wager > 500 || target < 2 || target > 95) {
+      return NextResponse.json({ error: 'Invalid bet parameters. Wager must be $1–$500 and target must be 2.00–95.00.' }, { status: 400 });
+    }
+
+    const calculatedMultiplier = getDiceMultiplier(target);
+    const MAX_PROFIT_PER_BET = 2500;
+    if ((wager * calculatedMultiplier) - wager > MAX_PROFIT_PER_BET) {
+      const maxWager = Math.max(1, Math.floor(MAX_PROFIT_PER_BET / (calculatedMultiplier - 1)));
+      return NextResponse.json({
+        error: `Max profit limit is $${MAX_PROFIT_PER_BET}. For target ${target} (${calculatedMultiplier}×), max allowable wager is $${maxWager}.`,
+      }, { status: 400 });
     }
 
     // Handle Demo Mode (Safe Provably-Fair Simulation without DB balance impact)
@@ -98,8 +107,8 @@ export async function POST(req: Request) {
       : -wager;
     const payout = won ? parseFloat((wager * multiplier).toFixed(2)) : 0.0;
 
-    // 3. Calculate VIP Rakeback on theoretical house edge (1% on Dice)
-    const rakebackEarned = calculateDeterministicRakeback(wager, 0.02, profile.vip_tier);
+    // 3. Calculate VIP Rakeback on theoretical house edge (4% on Dice)
+    const rakebackEarned = calculateDeterministicRakeback(wager, 0.04, profile.vip_tier);
 
     // 4. Atomic Database Transaction
     const updatedState = await recordAtomicBet({

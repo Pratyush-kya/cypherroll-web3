@@ -351,28 +351,7 @@ class CrashEngine {
       return await this.executeCashoutInternal(bet, currentMulti, false);
     }
 
-    // Network Latency Grace Window (50ms buffer post-crash)
-    // Tightened from 250ms to prevent bot exploitation
-    const LATENCY_GRACE_MS = 50;
-    if (this.status === 'CRASHED' && this.crashedAt > 0) {
-      const timeSinceCrash = Date.now() - this.crashedAt;
-      // Reject if client timestamp is after crash (bot detection)
-      if (clientTimestamp && clientTimestamp > this.crashedAt) {
-        return { success: false, error: 'Cashout request timestamp is after crash — rejected' };
-      }
-      if (timeSinceCrash <= LATENCY_GRACE_MS) {
-        const requestedMulti = clientMultiplier && clientMultiplier < this.crashPoint
-          ? Math.max(1.01, parseFloat(clientMultiplier.toFixed(2)))
-          : Math.max(1.01, parseFloat((this.crashPoint - 0.01).toFixed(2)));
-
-        if (requestedMulti < this.crashPoint) {
-          const result = await this.executeCashoutInternal(bet, requestedMulti, false);
-          return {
-            ...result,
-            multiplier: requestedMulti,
-          };
-        }
-      }
+    if (this.status === 'CRASHED') {
       return { success: false, error: 'Round crashed before cashout packet was received' };
     }
 

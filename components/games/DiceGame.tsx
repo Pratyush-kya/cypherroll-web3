@@ -253,7 +253,7 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced,
             <div className="flex items-center gap-2.5">
               <Dices className="w-5 h-5 text-primary" />
               <span className="font-heading text-sm font-bold text-foreground">CypherDice</span>
-              <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">98% RTP</span>
+              <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">96% RTP (4% Edge)</span>
             </div>
             <button onClick={() => setIsAuditorOpen(true)} className="flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-primary transition-colors bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
               <ShieldCheck className="w-3.5 h-3.5 text-primary" />Audit
@@ -334,7 +334,7 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced,
               <input
                 type="range"
                 min="2"
-                max="98"
+                max="95"
                 step="1"
                 value={target}
                 disabled={isRolling || isAutoBet}
@@ -344,7 +344,7 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced,
             </div>
             <div className="flex justify-between text-[10px] font-mono text-slate-500">
               <span>2 → High Risk / High Reward</span>
-              <span>98 → Safe / Low Reward</span>
+              <span>95 → Safe / Low Reward</span>
             </div>
 
             {/* Seed hash row */}
@@ -404,9 +404,9 @@ export default function DiceGame({ userWallet, balance, setBalance, onBetPlaced,
             <div className="text-[10px] font-mono text-slate-500 uppercase mb-2">Quick Targets</div>
             <div className="grid grid-cols-5 gap-1.5">
               {[
-                { label: '2×', target: 49, pct: '49%' },
-                { label: '3×', target: 33, pct: '33%' },
-                { label: '5×', target: 20, pct: '20%' },
+                { label: '2×', target: 48, pct: '48%' },
+                { label: '3×', target: 32, pct: '32%' },
+                { label: '5×', target: 19, pct: '19%' },
                 { label: '10×', target: 10, pct: '10%' },
                 { label: '48×', target: 2, pct: '2%' },
               ].map(({ label, target: t, pct }) => (
