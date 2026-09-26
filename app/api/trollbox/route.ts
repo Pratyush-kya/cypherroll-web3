@@ -1,20 +1,67 @@
 import { NextResponse } from 'next/server';
 import { supabase, getMockTrollbox, addMockTrollboxMessage, broadcastTrollboxMessage, getOrCreatePlayer } from '@/lib/supabase';
 import { verifySession } from '@/lib/auth';
+import { encryptMessage, decryptMessage } from '@/lib/crypto-chat';
 
 export const dynamic = 'force-dynamic';
 
+interface ChatItem {
+  id: string;
+  sender_address: string;
+  sender_vip: string;
+  message: string;
+  created_at: string;
+  verified?: boolean;
+}
+
+// Persistent process-level cache across serverless warm invocations
+const g = globalThis as unknown as { __cypherroll_chat_cache?: ChatItem[] };
+if (!g.__cypherroll_chat_cache) {
+  g.__cypherroll_chat_cache = [];
+}
+
 export async function GET() {
+  let rawMessages: any[] = [];
+
   if (supabase) {
-    const { data } = await supabase
-      .from('trollbox_messages')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(30);
-    return NextResponse.json({ messages: data?.reverse() || [] });
+    try {
+      const { data, error } = await supabase
+        .from('trollbox_messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(40);
+      
+      if (!error && data && data.length > 0) {
+        rawMessages = data.reverse();
+      }
+    } catch (e) {
+      console.warn('Supabase trollbox fetch error, falling back to cache:', e);
+    }
   }
 
-  return NextResponse.json({ messages: getMockTrollbox() });
+  // If Supabase returned empty or was unavailable, use global persistent cache or mockDb
+  if (rawMessages.length === 0) {
+    if (g.__cypherroll_chat_cache && g.__cypherroll_chat_cache.length > 0) {
+      rawMessages = g.__cypherroll_chat_cache;
+    } else {
+      rawMessages = getMockTrollbox();
+    }
+  }
+
+  // Decrypt each message and verify HMAC-SHA256 signature
+  const decryptedMessages = rawMessages.map((m) => {
+    const dec = decryptMessage(m.message);
+    return {
+      id: m.id,
+      sender_address: m.sender_address,
+      sender_vip: m.sender_vip,
+      message: dec.text,
+      verified: dec.verified,
+      created_at: m.created_at,
+    };
+  });
+
+  return NextResponse.json({ messages: decryptedMessages });
 }
 
 export async function POST(req: Request) {
@@ -60,29 +107,70 @@ export async function POST(req: Request) {
 
     const sanitizedMessage = message.trim().substring(0, 200);
 
-    // 4. Save securely
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('trollbox_messages')
-        .insert({
-          sender_address: senderWallet,
-          sender_vip: vipTier,
-          message: sanitizedMessage,
-        })
-        .select('*')
-        .single();
-      
-      if (!error && data) {
-        // Broadcast over Supabase Realtime WebSocket channel
-        broadcastTrollboxMessage(data);
-        return NextResponse.json({ message: data });
-      }
-      console.warn('Supabase insert failed, using fallback in-memory trollbox:', error);
+    // 4. Cryptographic Encryption & HMAC-SHA256 Signing
+    // Encrypt message content with AES-256-GCM and sign with HMAC-SHA256
+    const encryptedPayload = encryptMessage(sanitizedMessage);
+
+    const messageRecord: ChatItem = {
+      id: Math.random().toString(36).substring(7) + Date.now().toString(36),
+      sender_address: senderWallet,
+      sender_vip: vipTier,
+      message: encryptedPayload,
+      created_at: new Date().toISOString(),
+    };
+
+    // Store in global process cache immediately to prevent auto-deletion across lambdas
+    if (!g.__cypherroll_chat_cache) g.__cypherroll_chat_cache = [];
+    g.__cypherroll_chat_cache.push(messageRecord);
+    if (g.__cypherroll_chat_cache.length > 50) {
+      g.__cypherroll_chat_cache = g.__cypherroll_chat_cache.slice(-50);
     }
 
-    const newMsg = addMockTrollboxMessage(senderWallet, vipTier, sanitizedMessage);
-    broadcastTrollboxMessage(newMsg);
-    return NextResponse.json({ message: newMsg });
+    // 5. Persist to Supabase if available
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('trollbox_messages')
+          .insert({
+            sender_address: senderWallet,
+            sender_vip: vipTier,
+            message: encryptedPayload,
+          })
+          .select('*')
+          .single();
+        
+        if (!error && data) {
+          // Broadcast over Supabase Realtime WebSocket channel
+          broadcastTrollboxMessage({
+            ...data,
+            message: sanitizedMessage,
+            verified: true,
+          });
+
+          return NextResponse.json({
+            message: {
+              ...data,
+              message: sanitizedMessage,
+              verified: true,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase insert failed, using memory cache:', err);
+      }
+    }
+
+    addMockTrollboxMessage(senderWallet, vipTier, encryptedPayload);
+    
+    // Broadcast decrypted message for live connected sockets
+    const broadcastPayload = {
+      ...messageRecord,
+      message: sanitizedMessage,
+      verified: true,
+    };
+    broadcastTrollboxMessage(broadcastPayload);
+
+    return NextResponse.json({ message: broadcastPayload });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });
   }
