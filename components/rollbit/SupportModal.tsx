@@ -5,13 +5,15 @@ import { LifeBuoy, X, AlertTriangle, Send, CheckCircle2 } from 'lucide-react';
 
 interface SupportModalProps {
   onClose: () => void;
+  walletAddress?: string;
 }
 
-export function SupportModal({ onClose }: SupportModalProps) {
+export function SupportModal({ onClose, walletAddress }: SupportModalProps) {
   const [issueType, setIssueType] = useState('Deposit / Cashier');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [ticketId, setTicketId] = useState('');
 
   const issueTypes = [
     'Deposit / Cashier',
@@ -31,16 +33,17 @@ export function SupportModal({ onClose }: SupportModalProps) {
       const res = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ issueType, message: message.trim() }),
+        body: JSON.stringify({ issueType, message: message.trim(), walletAddress }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit ticket');
 
+      setTicketId(data.ticketId || '');
       setStatus('success');
       setTimeout(() => {
         onClose();
-      }, 3000);
+      }, 3500);
     } catch (err: any) {
       setStatus('error');
       setErrorMsg(err.message);

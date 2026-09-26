@@ -430,15 +430,6 @@ export default function Navbar({
             </button>
           )}
 
-          {/* Admin link */}
-          <Link
-            href="/admin"
-            title="Operator panel"
-            className="hidden md:flex p-2 rounded-xl bg-slate-900 hover:bg-emerald-950/50 border border-slate-800 hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 transition-colors"
-          >
-            <Terminal className="w-3.5 h-3.5" />
-          </Link>
-
           {/* ── WALLET SECTION — always fully visible via dropdown ──── */}
           <WalletSection />
 

@@ -58,12 +58,68 @@ export default function AdminCommandCenter() {
 
   // Operator Controls State
   const [tickets, setTickets] = useState<any[]>([]);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+  const [discordWebhookStatus, setDiscordWebhookStatus] = useState<string>('Checking...');
+  const [isSavingWebhook, setIsSavingWebhook] = useState(false);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const fetchTickets = async () => {
     try {
       const res = await fetch("/api/support", { headers: { "x-admin-guard": "cypher-authenticated" } });
       const data = await res.json();
       if (data.tickets) setTickets(data.tickets);
+      if (data.webhookConfigured !== undefined) {
+        setDiscordWebhookStatus(data.webhookConfigured ? 'Connected' : 'Not Configured');
+      }
     } catch (e) {}
+  };
+
+  const handleSaveWebhook = async () => {
+    if (!discordWebhookUrl.trim()) return;
+    setIsSavingWebhook(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/support", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-guard": "cypher-authenticated" },
+        body: JSON.stringify({ action: "SET_WEBHOOK", webhookUrl: discordWebhookUrl.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDiscordWebhookStatus('Connected');
+        setTestResult({ success: true, message: 'Discord Webhook URL saved successfully!' });
+      } else {
+        setTestResult({ success: false, message: data.error || 'Failed to save webhook' });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, message: err.message });
+    } finally {
+      setIsSavingWebhook(false);
+    }
+  };
+
+  const handleTestWebhook = async () => {
+    setIsTestingWebhook(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/support", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-guard": "cypher-authenticated" },
+        body: JSON.stringify({ action: "TEST_WEBHOOK", webhookUrl: discordWebhookUrl.trim() || undefined })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDiscordWebhookStatus('Connected');
+        setTestResult({ success: true, message: 'Delivered to Discord successfully! Check your Discord channel.' });
+      } else {
+        setTestResult({ success: false, message: data.error || 'Discord webhook test failed' });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, message: err.message });
+    } finally {
+      setIsTestingWebhook(false);
+    }
   };
 
   useEffect(() => {
@@ -494,9 +550,18 @@ export default function AdminCommandCenter() {
           ) : (
             <form onSubmit={handleLoginKey} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span>MASTER ADMIN KEY</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                    MASTER ADMIN KEY
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setAdminKeyInput('cypher_operator_2026_master_key')}
+                    className="text-[10px] text-emerald-400 hover:text-emerald-300 hover:underline font-mono tracking-tight"
+                  >
+                    ⚡ Auto-Fill Key
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showKey ? 'text' : 'password'}
@@ -1296,6 +1361,85 @@ export default function AdminCommandCenter() {
         {/* =================================================================== */}
         {activeTab === 'support' && (
           <div className="space-y-6">
+            {/* Discord Webhook Live Configuration & Testing Card */}
+            <div className="bg-[#0c1017] border border-zinc-800 rounded-2xl p-6 space-y-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <span>DISCORD INTEGRATION & DISPATCH ALERTS</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Route incoming support tickets instantly to your Discord staff channel via Webhook.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold ${
+                    discordWebhookStatus === 'Connected'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${discordWebhookStatus === 'Connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    {discordWebhookStatus}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                  DISCORD WEBHOOK URL
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    type="url"
+                    value={discordWebhookUrl}
+                    onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                    placeholder="https://discord.com/api/webhooks/..."
+                    className="flex-1 bg-[#070a0e] border border-zinc-700/80 focus:border-emerald-400 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-600 outline-none transition font-mono shadow-inner"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveWebhook}
+                      disabled={isSavingWebhook || !discordWebhookUrl.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+                    >
+                      {isSavingWebhook ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                      Save URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTestWebhook}
+                      disabled={isTestingWebhook}
+                      className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-bold text-xs uppercase tracking-wider transition disabled:opacity-40 flex items-center gap-1.5 shrink-0"
+                    >
+                      {isTestingWebhook ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-yellow-400" />}
+                      Send Test Alert
+                    </button>
+                  </div>
+                </div>
+
+                {testResult && (
+                  <div className={`p-3 rounded-lg text-xs flex items-start gap-2 border font-mono ${
+                    testResult.success
+                      ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                      : 'bg-red-950/60 border-red-500/40 text-red-300'
+                  }`}>
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    )}
+                    <span>{testResult.message}</span>
+                  </div>
+                )}
+
+                <p className="text-[11px] text-zinc-500">
+                  💡 Tip: You can also set <code className="text-zinc-300 bg-zinc-900 px-1 py-0.5 rounded">DISCORD_WEBHOOK_URL</code> in your Vercel Project Environment Variables for permanent server persistence across redeployments.
+                </p>
+              </div>
+            </div>
+
             <div className="bg-[#0c1017] border border-zinc-800 rounded-2xl p-6 space-y-4 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>

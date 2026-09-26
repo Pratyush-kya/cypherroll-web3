@@ -237,7 +237,7 @@ export default function CasinoHome() {
 
       <LiveBetsTicker />
 
-      {isSupportOpen && <SupportModal onClose={() => setIsSupportOpen(false)} />}
+      {isSupportOpen && <SupportModal onClose={() => setIsSupportOpen(false)} walletAddress={activeWallet} />}
       
       <CashierModal
         isOpen={isCashierOpen}

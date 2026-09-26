@@ -5,17 +5,23 @@ const globalStore = global as any;
 if (!globalStore.supportTickets) {
   globalStore.supportTickets = [];
 }
+if (globalStore.discordWebhookUrl === undefined) {
+  globalStore.discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL || '';
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const sessionCookie = req.cookies.get('cr_session')?.value;
-    const session = sessionCookie ? await verifySession(sessionCookie) : null;
-    
-    const wallet = session?.wallet || 'UNAUTHENTICATED_GUEST';
-    const { issueType, message } = await req.json();
+    const cookieHeader = req.headers.get('cookie') || '';
+    const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/) || cookieHeader.match(/cr_session=([^;]+)/);
+    const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
+
+    const body = await req.json().catch(() => ({}));
+    const { issueType, message, walletAddress } = body;
+
+    const wallet = session?.wallet || walletAddress || 'UNAUTHENTICATED_GUEST';
 
     if (!issueType || !message) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required issue type or message fields' }, { status: 400 });
     }
 
     const ticket = {
@@ -29,37 +35,67 @@ export async function POST(req: NextRequest) {
     
     globalStore.supportTickets.push(ticket);
 
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-    if (webhookUrl) {
-      let color = 3447003; 
-      if (issueType === 'Deposit / Cashier') color = 5763719; 
-      if (issueType === 'Game Engine Bug') color = 15548997; 
-      if (issueType === 'Account / Security') color = 15105570; 
+    const webhookUrl = globalStore.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL;
+    let discordDelivery = 'NOT_CONFIGURED';
+    let discordDetail = '';
 
-      const embed = {
-        title: `🚨 New Support Ticket: ${ticket.id}`,
-        color,
-        fields: [
-          { name: 'Issue Type', value: issueType, inline: true },
-          { name: 'Wallet Address', value: `\`${wallet}\``, inline: true },
-          { name: 'Message', value: message }
-        ],
-        timestamp: new Date().toISOString(),
-        footer: { text: 'CypherRoll Internal Support System' }
+    if (webhookUrl && webhookUrl.trim().startsWith('http')) {
+      let color = 3447003; // Blue
+      if (issueType === 'Deposit / Cashier') color = 5763719; // Green
+      if (issueType === 'Game Engine Bug') color = 15548997; // Red
+      if (issueType === 'Account / Security') color = 15105570; // Gold
+
+      const discordPayload = {
+        content: `🚨 **[CypherRoll Support] New Ticket Submitted** • \`${ticket.id}\``,
+        embeds: [
+          {
+            title: `Support Ticket: ${ticket.id}`,
+            color,
+            fields: [
+              { name: 'Issue Category', value: issueType, inline: true },
+              { name: 'Player Wallet', value: `\`${wallet}\``, inline: true },
+              { name: 'Status', value: '🟢 OPEN', inline: true },
+              { name: 'Ticket Message', value: message }
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: 'CypherRoll Internal Support System' }
+          }
+        ]
       };
 
       try {
-        await fetch(webhookUrl, {
+        const discordRes = await fetch(webhookUrl.trim(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ embeds: [embed] })
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'CypherRoll-SupportBot/1.0',
+          },
+          body: JSON.stringify(discordPayload)
         });
-      } catch (err) {
-        console.error('Failed to send Discord webhook:', err);
+
+        if (discordRes.ok) {
+          discordDelivery = 'DELIVERED';
+        } else {
+          const errText = await discordRes.text();
+          discordDelivery = `FAILED_HTTP_${discordRes.status}`;
+          discordDetail = errText;
+          console.error(`[DISCORD WEBHOOK FAILED] Status: ${discordRes.status}, Error:`, errText);
+        }
+      } catch (err: any) {
+        discordDelivery = 'NETWORK_ERROR';
+        discordDetail = err.message;
+        console.error('[DISCORD WEBHOOK ERROR]', err);
       }
+    } else {
+      console.warn('[DISCORD WEBHOOK] No webhook URL configured in DISCORD_WEBHOOK_URL or Admin Settings.');
     }
 
-    return NextResponse.json({ success: true, ticketId: ticket.id });
+    return NextResponse.json({
+      success: true,
+      ticketId: ticket.id,
+      discordDelivery,
+      discordDetail: discordDetail || undefined
+    });
 
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -73,7 +109,16 @@ export async function GET(req: NextRequest) {
   }
 
   const tickets = [...globalStore.supportTickets].reverse();
-  return NextResponse.json({ tickets });
+  const currentWebhook = globalStore.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL || '';
+  const maskedWebhook = currentWebhook
+    ? currentWebhook.replace(/(webhooks\/\d+\/)(.+)/, '$1************')
+    : '';
+
+  return NextResponse.json({
+    tickets,
+    webhookConfigured: Boolean(currentWebhook),
+    maskedWebhook
+  });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -92,6 +137,83 @@ export async function PATCH(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+/**
+ * PUT: Configure or Test Discord Webhook from Admin Dashboard
+ */
+export async function PUT(req: NextRequest) {
+  try {
+    const adminGuard = req.headers.get('x-admin-guard');
+    if (adminGuard !== 'cypher-authenticated') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { action, webhookUrl } = body;
+
+    if (action === 'SET_WEBHOOK') {
+      if (!webhookUrl || typeof webhookUrl !== 'string') {
+        return NextResponse.json({ error: 'Invalid webhook URL provided' }, { status: 400 });
+      }
+      globalStore.discordWebhookUrl = webhookUrl.trim();
+      return NextResponse.json({
+        success: true,
+        message: 'Discord Webhook URL updated successfully in server memory'
+      });
+    }
+
+    if (action === 'TEST_WEBHOOK') {
+      const targetUrl = (webhookUrl || globalStore.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL || '').trim();
+      if (!targetUrl) {
+        return NextResponse.json({ error: 'No Discord Webhook URL has been configured yet' }, { status: 400 });
+      }
+
+      const testPayload = {
+        content: '✅ **[CypherRoll Admin]** Discord Webhook connection verified successfully!',
+        embeds: [
+          {
+            title: '⚡ CypherRoll Operational Test Embed',
+            description: 'This is a test notification confirming that the CypherRoll Support Desk is connected to this Discord channel.',
+            color: 65280, // Green
+            fields: [
+              { name: 'Status', value: '🟢 ACTIVE & VERIFIED', inline: true },
+              { name: 'Environment', value: 'Production / Vercel', inline: true },
+              { name: 'Operator', value: 'Master Administrator', inline: true }
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: 'CypherRoll Autonomous Casino System' }
+          }
+        ]
+      };
+
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'CypherRoll-SupportBot/1.0',
+        },
+        body: JSON.stringify(testPayload)
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return NextResponse.json({
+          success: false,
+          error: `Discord responded with HTTP ${res.status}: ${errText}`
+        }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Test message delivered to Discord successfully!'
+      });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
