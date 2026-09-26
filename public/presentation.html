@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CypherRoll Web3 Casino — Master Technical & Algorithm Presentation</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cypher: {
+              gold: '#F59E0B',
+              cyan: '#06B6D4',
+              violet: '#8B5CF6',
+              emerald: '#10B981',
+              rose: '#F43F5E',
+              dark: '#07090E',
+              card: '#0D121F',
+              border: 'rgba(255, 255, 255, 0.08)'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Menlo', 'Consolas', 'monospace'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- KaTeX for crisp mathematical formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+    body {
+      background-color: #07090e;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #07090e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Glows & Gradients */
+    .glow-gold {
+      box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.25);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 35px -5px rgba(6, 182, 212, 0.25);
+    }
+    .glow-violet {
+      box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.25);
+    }
+    .text-gradient {
+      background: linear-gradient(135deg, #F59E0B, #06B6D4, #8B5CF6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .text-gradient-cyan {
+      background: linear-gradient(135deg, #06B6D4, #3B82F6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(13, 18, 31, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: all 0.2s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* Slide Deck Transitions */
+    .slide {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* In scroll mode, all slides display block */
+    body.scroll-mode .slide {
+      display: block !important;
+      opacity: 1 !important;
+      margin-bottom: 5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 4rem;
+    }
+    body.scroll-mode .slide-nav-fixed {
+      display: none !important;
+    }
+    body.scroll-mode #toc-sidebar {
+      display: block !important;
+    }
+
+    /* Formula highlight box */
+    .math-block {
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 4px solid #06b6d4;
+      padding: 1rem 1.25rem;
+      border-radius: 0 0.5rem 0.5rem 0;
+      font-size: 1.1rem;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body class="deck-mode selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- ================= MASTER HUD HEADER ================= -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/10 px-4 lg:px-8 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-500 via-cyan-500 to-violet-600 flex items-center justify-center font-black text-black text-lg shadow-lg">
+        ⚡
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-base tracking-wide text-white">CYPHER<span class="text-amber-400">ROLL</span></span>
+          <span class="text-[10px] font-mono uppercase bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/30">Master Deck & Whitepaper</span>
+        </div>
+        <p class="text-xs text-slate-400 font-mono hidden sm:block">Mathematical Verification • Non-Custodial Architecture • Anti-Exploit</p>
+      </div>
+    </div>
+
+    <!-- HUD Action Controls -->
+    <div class="flex items-center space-x-2 sm:space-x-4">
+      <!-- Mode Toggle -->
+      <div class="flex items-center bg-slate-900/90 p-1 rounded-lg border border-white/10 text-xs font-mono">
+        <button id="btn-mode-deck" onclick="setMode('deck')" class="px-3 py-1 rounded bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/40 transition">
+          Deck Mode
+        </button>
+        <button id="btn-mode-scroll" onclick="setMode('scroll')" class="px-3 py-1 rounded text-slate-400 hover:text-white transition">
+          Audit Scroll
+        </button>
+      </div>
+
+      <!-- Quick Section Jump Dropdown -->
+      <select id="section-select" onchange="jumpToSlide(parseInt(this.value))" class="bg-slate-900 border border-white/15 text-slate-300 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-mono hidden md:block">
+        <option value="0">1. Executive Overview & Stack</option>
+        <option value="1">2. Provably Fair SHA-256 Engine</option>
+        <option value="2">3. CypherDice: Math & RTP</option>
+        <option value="3">4. CypherCrash: Rocket Telemetry</option>
+        <option value="4">5. CypherMines: Combinatorics</option>
+        <option value="5">6. CypherPlinko: Galton Board</option>
+        <option value="6">7. Security & Concurrency Guardrails</option>
+        <option value="7">8. Interactive Labs & Live Verifier</option>
+      </select>
+
+      <!-- Fullscreen Button -->
+      <button onclick="toggleFullScreen()" title="Toggle Fullscreen (F)" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/10 text-xs flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+      </button>
+
+      <!-- Speaker Notes Toggle -->
+      <button onclick="toggleNotes()" title="Speaker Notes (N)" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-amber-500/20 text-xs font-mono">
+        Notes [N]
+      </button>
+
+      <!-- App Link -->
+      <a href="/" target="_blank" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold text-xs uppercase tracking-wider shadow-lg flex items-center gap-1">
+        Launch App ↗
+      </a>
+    </div>
+  </header>
+
+  <!-- Sticky Left Sidebar (Scroll Audit Mode Only) -->
+  <aside id="toc-sidebar" class="hidden fixed left-4 top-20 bottom-8 w-64 glass-panel rounded-2xl p-4 overflow-y-auto z-40">
+    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 font-mono border-b border-white/10 pb-2">Technical Index</div>
+    <nav class="space-y-1 text-xs font-mono">
+      <a href="#slide-0" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">1. Executive Stack</a>
+      <a href="#slide-1" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">2. Provably Fair Math</a>
+      <a href="#slide-2" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">3. CypherDice Engine</a>
+      <a href="#slide-3" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">4. CypherCrash Rocket</a>
+      <a href="#slide-4" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">5. CypherMines Matrix</a>
+      <a href="#slide-5" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">6. CypherPlinko Galton</a>
+      <a href="#slide-6" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">7. Security & Concurrency</a>
+      <a href="#slide-7" class="block p-2 rounded hover:bg-white/5 text-slate-300 hover:text-cyan-400">8. Live Verifiers & Labs</a>
+    </nav>
+  </aside>
+
+  <!-- Speaker Notes Drawer (Toggled with N) -->
+  <div id="speaker-notes" class="hidden fixed bottom-16 right-6 w-96 max-w-[90vw] glass-panel rounded-xl p-4 z-50 border border-amber-500/40 shadow-2xl">
+    <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
+      <div class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 font-mono">
+        <span>🎙️</span> Presenter Executive Talking Points
+      </div>
+      <button onclick="toggleNotes()" class="text-slate-400 hover:text-white text-xs">✕</button>
+    </div>
+    <div id="notes-content" class="text-xs text-slate-300 leading-relaxed font-sans space-y-2 max-h-60 overflow-y-auto">
+      <!-- Injected per slide -->
+    </div>
+  </div>
+
+  <!-- ================= MAIN PRESENTATION CONTAINER ================= -->
+  <main class="pt-20 pb-24 px-4 sm:px-8 max-w-7xl mx-auto transition-all duration-300" id="main-content">
+
+    <!-- ================= SLIDE 0: EXECUTIVE OVERVIEW & ARCHITECTURE ================= -->
+    <section id="slide-0" class="slide active">
+      <div class="space-y-6">
+        <!-- Hero Header -->
+        <div class="text-center max-w-3xl mx-auto pt-4 pb-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono mb-4">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> Web3 Non-Custodial Casino Architecture
+          </div>
+          <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">
+            Next-Generation <span class="text-gradient">Provably Fair</span> Web3 Casino
+          </h1>
+          <p class="text-base text-slate-400 leading-relaxed">
+            A comprehensive architectural and mathematical breakdown of CypherRoll. Fully non-custodial multi-chain support, cryptographically auditable random number generation, and high-frequency real-time gameplay.
+          </p>
+        </div>
+
+        <!-- 3 Pillars of CypherRoll -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-amber-500/10 rounded-full blur-2xl"></div>
+            <div class="text-amber-400 text-2xl mb-3">🔐</div>
+            <h3 class="text-lg font-bold text-white mb-2">100% Non-Custodial</h3>
+            <p class="text-xs text-slate-400 leading-relaxed mb-4">
+              Direct wallet-to-contract transactions with Solana (Phantom, Solflare) and EVM (MetaMask). Zero holding of user funds; instant atomic balance settlement.
+            </p>
+            <div class="text-[11px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded inline-block">
+              Dual Mode: Real Web3 vs Instant Demo
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl"></div>
+            <div class="text-cyan-400 text-2xl mb-3">📐</div>
+            <h3 class="text-lg font-bold text-white mb-2">Deterministic Cryptography</h3>
+            <p class="text-xs text-slate-400 leading-relaxed mb-4">
+              HMAC-SHA256 outcome derivation with public server seed pre-commitments. Every single roll, crash, mine, and plinko drop is mathematically verifiable by the player.
+            </p>
+            <div class="text-[11px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded inline-block">
+              Zero Server Tampering Possible
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-violet-500/10 rounded-full blur-2xl"></div>
+            <div class="text-violet-400 text-2xl mb-3">⚡</div>
+            <h3 class="text-lg font-bold text-white mb-2">Real-Time Interactive 3D</h3>
+            <p class="text-xs text-slate-400 leading-relaxed mb-4">
+              Integrated Three.js WebGL physics, realistic rocket particle thrust trails, dynamic neon Galton board physics, and flipping 3D voxel mine tiles.
+            </p>
+            <div class="text-[11px] font-mono text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 rounded inline-block">
+              Next.js 14 + Three.js + Tailwind
+            </div>
+          </div>
+        </div>
+
+        <!-- Full Stack Architecture Diagram -->
+        <div class="glass-panel rounded-2xl p-6 border border-white/10">
+          <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+            <h3 class="font-bold text-sm uppercase tracking-wider text-slate-200 font-mono flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Production Technology Stack & Data Flow
+            </h3>
+            <span class="text-xs text-slate-400 font-mono">End-to-End Latency: &lt;45ms</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-white/5 space-y-2">
+              <div class="text-cyan-400 font-bold uppercase text-[11px]">1. Client Presentation</div>
+              <ul class="text-slate-300 space-y-1 list-disc list-inside">
+                <li>Next.js 14 App Router</li>
+                <li>Tailwind CSS Cyberpunk Dark</li>
+                <li>Three.js / WebGL Canvases</li>
+                <li>Lucide Iconography</li>
+              </ul>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-white/5 space-y-2">
+              <div class="text-amber-400 font-bold uppercase text-[11px]">2. Web3 & Session Layer</div>
+              <ul class="text-slate-300 space-y-1 list-disc list-inside">
+                <li>@solana/web3.js (Phantom)</li>
+                <li>ethers.js v6 (MetaMask/EVM)</li>
+                <li>Stateless AES-256-GCM tokens</li>
+                <li>PoW Anti-Bot Verification</li>
+              </ul>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-white/5 space-y-2">
+              <div class="text-violet-400 font-bold uppercase text-[11px]">3. Server Authority</div>
+              <ul class="text-slate-300 space-y-1 list-disc list-inside">
+                <li>Edge API Route Handlers</li>
+                <li>HMAC-SHA256 Engine</li>
+                <li>Galton Binomial Deflection</li>
+                <li>Exponential Trajectory $e^{0.06t}$</li>
+              </ul>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-white/5 space-y-2">
+              <div class="text-emerald-400 font-bold uppercase text-[11px]">4. Persistence & Ledger</div>
+              <ul class="text-slate-300 space-y-1 list-disc list-inside">
+                <li>PostgreSQL with Row Locks</li>
+                <li>Supabase Atomic RPC Transactions</li>
+                <li>VIP Rakeback Ledger (5-15%)</li>
+                <li>Anti-Race `FOR UPDATE` isolation</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Four Flagship Games Overview -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="glass-card rounded-xl p-4 text-center border-amber-500/20">
+            <div class="text-2xl mb-1">🎲</div>
+            <div class="font-bold text-sm text-white">CypherDice</div>
+            <div class="text-xs text-amber-400 font-mono mt-1">98.00% RTP (2% Edge)</div>
+            <div class="text-[11px] text-slate-400 mt-1">Target range 1.00 – 98.00</div>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 text-center border-rose-500/20">
+            <div class="text-2xl mb-1">🚀</div>
+            <div class="font-bold text-sm text-white">CypherCrash</div>
+            <div class="text-xs text-rose-400 font-mono mt-1">97.00% RTP (3% Edge)</div>
+            <div class="text-[11px] text-slate-400 mt-1">Instant Crash 3% @ 1.00x</div>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 text-center border-emerald-500/20">
+            <div class="text-2xl mb-1">💣</div>
+            <div class="font-bold text-sm text-white">CypherMines</div>
+            <div class="text-xs text-emerald-400 font-mono mt-1">97.00% RTP (3% Edge)</div>
+            <div class="text-[11px] text-slate-400 mt-1">25 Tiles, 1-24 Mines</div>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 text-center border-cyan-500/20">
+            <div class="text-2xl mb-1">⚡</div>
+            <div class="font-bold text-sm text-white">CypherPlinko</div>
+            <div class="text-xs text-cyan-400 font-mono mt-1">97.5% / 94.5% RTP</div>
+            <div class="text-[11px] text-slate-400 mt-1">8, 12, 16 Peg Rows</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 1: PROVABLY FAIR CRYPTOGRAPHY ================= -->
+    <section id="slide-1" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-cyan-400 font-mono text-xs mb-1">
+            <span>CRYPTOGRAPHIC PRIMITIVES</span> • <span>SHA-256 / HMAC</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">The Provably Fair Mathematical Engine</h2>
+          <p class="text-sm text-slate-400">
+            How CypherRoll guarantees zero manipulation, verifiable pre-commitments, and client-controlled randomness.
+          </p>
+        </div>
+
+        <!-- 3 Step Protocol Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="glass-panel rounded-2xl p-5 border-cyan-500/30">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 rounded-full bg-cyan-500 text-black font-black flex items-center justify-center text-xs">1</span>
+              <h4 class="font-bold text-white text-sm">Server Seed Pre-Commitment</h4>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed mb-3">
+              Before the user places a bet, the server generates a cryptographically secure 256-bit random hex seed ($S$) and sends only its SHA-256 hash ($H$) to the client.
+            </p>
+            <div class="math-block text-xs font-mono text-cyan-300">
+              $$H = \text{SHA-256}(S)$$
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+              Because SHA-256 is preimage resistant, the server cannot change $S$ after seeing the player's wager or seeds.
+            </p>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-5 border-amber-500/30">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 rounded-full bg-amber-500 text-black font-black flex items-center justify-center text-xs">2</span>
+              <h4 class="font-bold text-white text-sm">Client Entropy Injection</h4>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed mb-3">
+              The player provides a custom client seed ($C$) and an incrementing nonce ($N$). The casino has zero control over what client seed the player chooses.
+            </p>
+            <div class="math-block text-xs font-mono text-amber-300">
+              $$\text{Payload} = C \parallel \text{“:”} \parallel N$$
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+              Combined message space guarantees that even with a known server seed, results cannot be pre-computed by third parties.
+            </p>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-5 border-violet-500/30">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 rounded-full bg-violet-500 text-white font-black flex items-center justify-center text-xs">3</span>
+              <h4 class="font-bold text-white text-sm">Deterministic Outcome</h4>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed mb-3">
+              The game result is computed by evaluating the HMAC-SHA256 using the secret server seed as the key over the client payload.
+            </p>
+            <div class="math-block text-xs font-mono text-violet-300">
+              $$R = \text{HMAC-SHA256}(S, C : N)$$
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+              First 8 hexadecimal characters are converted to an integer and mapped to the uniform float interval $[0, 1)$.
+            </p>
+          </div>
+        </div>
+
+        <!-- Uniform Float Derivation Deep Dive -->
+        <div class="glass-panel rounded-2xl p-6 border border-white/10">
+          <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+            <span>⚙️</span> The 32-Bit Hexadecimal Float Derivation Formula
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed mb-4">
+            To prevent statistical clustering, CypherRoll uses 4 distinct bytes ($b_0, b_1, b_2, b_3$) from the HMAC output, converting them into a high-precision 32-bit floating point number strictly distributed over $[0, 1)$:
+          </p>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="math-block text-sm">
+              $$\text{Float} = \frac{b_0 \cdot 256^3 + b_1 \cdot 256^2 + b_2 \cdot 256^1 + b_3 \cdot 256^0}{2^{32}}$$
+              $$\text{Float} = \frac{\text{parseInt}(\text{hex}[0..8], 16)}{4294967296}$$
+            </div>
+
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-white/5 font-mono text-xs space-y-2 text-slate-300">
+              <div class="text-cyan-400 font-bold">// TypeScript Production Implementation</div>
+              <div>const hex = computeHMAC(serverSeed, `${clientSeed}:${nonce}`);</div>
+              <div>const intVal = parseInt(hex.substring(0, 8), 16);</div>
+              <div>const floatVal = intVal / 0x100000000; <span class="text-slate-500">// 2^32 = 4,294,967,296</span></div>
+              <div class="text-emerald-400 font-semibold">// Result: Uniformly distributed in [0, 1)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 2: CYPHERDICE ALGORITHM ================= -->
+    <section id="slide-2" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-amber-400 font-mono text-xs mb-1">
+            <span>GAME ENGINE 01</span> • <span>LINEAR RANDOM MAPPING</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">CypherDice: 98.00% Constant RTP Model</h2>
+          <p class="text-sm text-slate-400">
+            How the dynamic target slider preserves an exact, uncompromised 2.00% House Edge across every wager.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Math Derivations -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border border-white/10 space-y-3">
+              <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                <span>🎯</span> 1. Outcome Discretization (0.00 to 99.99)
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                The uniform float $[0, 1)$ is scaled to 10,000 distinct discrete steps ($0 \dots 9999$) with 2 decimal precision:
+              </p>
+              <div class="math-block text-xs font-mono">
+                $$\text{Roll Outcome} = \frac{\lfloor \text{Float} \times 10000 \rfloor}{100} \in [0.00, 99.99]$$
+              </div>
+              <p class="text-xs text-slate-400">
+                Win Condition: <span class="text-emerald-400 font-mono font-bold">Roll &lt; Target</span> where Target $\in [1.00, 98.00]$.
+              </p>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-white/10 space-y-3">
+              <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                <span>💰</span> 2. Payout Multiplier & House Edge Equation
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                A theoretical zero-edge multiplier is $100 / \text{Target}$. Applying the 2% house commission ($HE = 0.02$) yields:
+              </p>
+              <div class="math-block text-xs font-mono">
+                $$\text{Multiplier} = \frac{100 - \text{House Edge}}{\text{Target}} = \frac{98.00}{\text{Target}}$$
+              </div>
+              <div class="bg-slate-900 p-3 rounded-lg border border-white/5 text-xs font-mono text-slate-300">
+                <span class="text-amber-400">Example:</span> Target = 50.00 $\implies$ Multiplier = $98.00 / 50.00 = 1.96\times$. Win Probability = 50.00%.
+              </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border-emerald-500/30 space-y-3">
+              <h4 class="font-bold text-emerald-400 text-sm flex items-center gap-2">
+                <span>✅</span> 3. Expected Value (EV) & RTP Proof
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                The expected return of a $1 bet for any chosen Target $T$ is mathematically constant:
+              </p>
+              <div class="math-block text-xs font-mono text-emerald-300">
+                $$E[X] = P(\text{Win}) \times \text{Multiplier} = \left(\frac{T}{100}\right) \times \left(\frac{98}{T}\right) = \frac{98}{100} = 0.98$$
+                $$\text{RTP} = 98.00\% \quad \Longleftrightarrow \quad \text{House Edge} = 2.00\% \quad \forall T \in [1, 98]$$
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Reference Matrix Card -->
+          <div class="glass-card rounded-2xl p-5 border-amber-500/30 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-mono text-amber-400 uppercase tracking-wider font-bold mb-3">Multiplier Matrix</div>
+              <table class="w-full text-xs font-mono text-left text-slate-300">
+                <thead>
+                  <tr class="border-b border-white/10 text-slate-400">
+                    <th class="py-2">Target</th>
+                    <th class="py-2">Win %</th>
+                    <th class="py-2 text-right">Multiplier</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                  <tr><td class="py-2 text-amber-300">2.00</td><td>2.00%</td><td class="py-2 text-right font-bold text-white">49.0000x</td></tr>
+                  <tr><td class="py-2 text-amber-300">10.00</td><td>10.00%</td><td class="py-2 text-right font-bold text-white">9.8000x</td></tr>
+                  <tr><td class="py-2 text-amber-300">25.00</td><td>25.00%</td><td class="py-2 text-right font-bold text-white">3.9200x</td></tr>
+                  <tr class="bg-cyan-500/10"><td class="py-2 font-bold text-cyan-300">50.00</td><td>50.00%</td><td class="py-2 text-right font-bold text-cyan-300">1.9600x</td></tr>
+                  <tr><td class="py-2 text-amber-300">75.00</td><td>75.00%</td><td class="py-2 text-right font-bold text-white">1.3066x</td></tr>
+                  <tr><td class="py-2 text-amber-300">95.00</td><td>95.00%</td><td class="py-2 text-right font-bold text-white">1.0315x</td></tr>
+                  <tr><td class="py-2 text-amber-300">98.00</td><td>98.00%</td><td class="py-2 text-right font-bold text-white">1.0000x</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-white/10 text-[11px] text-slate-400">
+              💡 <span class="text-slate-200">Memory Aid:</span> Higher target = higher win chance, lower multiplier. House edge remains 2.0% regardless of slider position!
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 3: CYPHERCRASH ROCKET TELEMETRY ================= -->
+    <section id="slide-3" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-rose-400 font-mono text-xs mb-1">
+            <span>GAME ENGINE 02</span> • <span>EXPONENTIAL ASCENT & INSTANT CRASH</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">CypherCrash: Rocket Dynamics & Telemetry</h2>
+          <p class="text-sm text-slate-400">
+            Continuous real-time flight mathematics, exponential multiplier escalation, and the 3% instant bust mechanism.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Left: Crash Multiplier Determination -->
+          <div class="space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border-rose-500/30 space-y-3">
+              <h4 class="font-bold text-rose-400 text-sm flex items-center gap-2">
+                <span>💥</span> 1. Crash Point Derivation & 3% Instant Bust
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                A random float $r \in [0, 1)$ is generated via HMAC-SHA256. To guarantee the casino's 3.00% House Edge ($HE = 0.03$), an instant crash at $1.00\times$ occurs whenever $r < 0.03$:
+              </p>
+              <div class="math-block text-xs font-mono text-rose-300">
+                $$\text{Crash Point} = \begin{cases} 
+                1.00\times & \text{if } r < 0.03 \quad (3\%\text{ House Edge Bust}) \\
+                \max\left(1.01, \left\lfloor \frac{0.97}{1 - r} \times 100 \right\rfloor / 100 \right) & \text{if } r \ge 0.03
+                \end{cases}$$
+              </div>
+              <p class="text-xs text-slate-400">
+                Probability of reaching multiplier $M \ge 1.01$: $P(\text{Multiplier} \ge M) = \frac{0.97}{M}$.
+              </p>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-white/10 space-y-3">
+              <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                <span>📈</span> 2. Flight Trajectory & Multiplier Growth
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                During active flight, the multiplier climbs exponentially with elapsed time $t$ (in seconds), calculated at 60 FPS:
+              </p>
+              <div class="math-block text-xs font-mono text-cyan-300">
+                $$M(t) = 1.00 \cdot e^{0.06 \cdot t}$$
+              </div>
+              <p class="text-xs text-slate-400">
+                Inverse formula: Time to reach multiplier $M$ is $t = \frac{\ln(M)}{0.06}$ seconds. Reaching $2.00\times$ requires $\approx 11.55$ seconds.
+              </p>
+            </div>
+          </div>
+
+          <!-- Right: Atmospheric Flight Telemetry -->
+          <div class="space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border-violet-500/30 space-y-3">
+              <h4 class="font-bold text-violet-400 text-sm flex items-center gap-2">
+                <span>🛰️</span> 3. Real-Time Atmospheric Layer & Velocity Mapping
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                The 3D rocket canvas computes real physics telemetry tied to the current multiplier:
+              </p>
+              <div class="space-y-2 text-xs font-mono">
+                <div class="bg-slate-900 p-2.5 rounded border border-white/5">
+                  <span class="text-cyan-400 font-bold">Altitude:</span> $h(t) = 100 \cdot \ln(M(t)) = 6 \cdot t \text{ km}$
+                </div>
+                <div class="bg-slate-900 p-2.5 rounded border border-white/5">
+                  <span class="text-amber-400 font-bold">Velocity:</span> $v(t) = 120 + 25 \cdot M(t) \text{ km/h}$
+                </div>
+              </div>
+
+              <!-- Atmospheric Layers table -->
+              <div class="mt-3">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Atmospheric Stratification:</div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                  <div class="bg-blue-950/40 p-2 rounded border border-blue-500/20 text-blue-300">
+                    <div>1.00x – 1.50x</div>
+                    <div class="text-[10px] text-slate-400">Troposphere (Cloud Layer)</div>
+                  </div>
+                  <div class="bg-indigo-950/40 p-2 rounded border border-indigo-500/20 text-indigo-300">
+                    <div>1.50x – 3.00x</div>
+                    <div class="text-[10px] text-slate-400">Stratosphere (Ozone Thinning)</div>
+                  </div>
+                  <div class="bg-purple-950/40 p-2 rounded border border-purple-500/20 text-purple-300">
+                    <div>3.00x – 10.00x</div>
+                    <div class="text-[10px] text-slate-400">Mesosphere (Aurora & Ionization)</div>
+                  </div>
+                  <div class="bg-amber-950/40 p-2 rounded border border-amber-500/20 text-amber-300">
+                    <div>10.00x+</div>
+                    <div class="text-[10px] text-slate-400">Exosphere (Deep Orbital Void)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Interactive Scrub Graph -->
+        <div class="glass-panel rounded-2xl p-5 border border-white/10">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-bold text-sm text-white font-mono flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> Live Crash Trajectory Explorer
+            </h4>
+            <div class="flex items-center gap-3 text-xs font-mono">
+              <span class="text-slate-400">Time: <span id="crash-time-label" class="text-white font-bold">0.0s</span></span>
+              <span class="text-slate-400">Multiplier: <span id="crash-mult-label" class="text-rose-400 font-bold">1.00x</span></span>
+            </div>
+          </div>
+
+          <div class="relative w-full h-44 bg-slate-950 rounded-xl border border-white/10 overflow-hidden">
+            <canvas id="crash-canvas" class="w-full h-full"></canvas>
+          </div>
+
+          <div class="mt-4 flex items-center gap-4">
+            <input id="crash-slider" type="range" min="0" max="40" step="0.1" value="0" oninput="updateCrashScrub(this.value)" class="w-full accent-rose-500 h-2 bg-slate-800 rounded-lg cursor-pointer">
+            <button onclick="animateCrashFlight()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono text-xs hover:bg-rose-500/30 whitespace-nowrap">
+              Simulate Flight ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 4: CYPHERMINES ALGORITHM ================= -->
+    <section id="slide-4" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-emerald-400 font-mono text-xs mb-1">
+            <span>GAME ENGINE 03</span> • <span>COMBINATORIAL HYPERGEOMETRIC PROBABILITY</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">CypherMines: Combinatorics & Stateless Cryptography</h2>
+          <p class="text-sm text-slate-400">
+            Hypergeometric progression, house edge floor rounding, and stateless AES-256-GCM session protection.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Mathematical Formula -->
+          <div class="space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border-emerald-500/30 space-y-3">
+              <h4 class="font-bold text-emerald-400 text-sm flex items-center gap-2">
+                <span>💎</span> 1. Combinatorial Safe Tile Probability
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                In a $5 \times 5$ board (25 tiles) with $M$ mines, safe tiles $S = 25 - M$. Probability of picking safe tile $i+1$ given $i$ gems already found without replacement:
+              </p>
+              <div class="math-block text-xs font-mono text-emerald-300">
+                $$P(\text{Safe}_i) = \frac{25 - M - i}{25 - i}$$
+                $$P(k \text{ Gems Safe}) = \prod_{i=0}^{k-1} \frac{25 - M - i}{25 - i}$$
+              </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-white/10 space-y-3">
+              <h4 class="font-bold text-amber-400 text-sm flex items-center gap-2">
+                <span>⚖️</span> 2. Multiplier Calculation (3.0% House Edge)
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Fair multiplier is the inverse of the survival probability. Multiplying by $(1 - 0.03 = 0.97)$ and applying floor truncation prevents house loss on fractional precision:
+              </p>
+              <div class="math-block text-xs font-mono text-amber-300">
+                $$\text{Fair Mult}(k) = \prod_{i=0}^{k-1} \frac{25 - i}{25 - M - i}$$
+                $$\text{Actual Mult}(k) = \frac{\lfloor \text{Fair Mult}(k) \times 0.97 \times 10000 \rfloor}{10000}$$
+              </div>
+            </div>
+          </div>
+
+          <!-- Stateless AES-256-GCM Token Architecture -->
+          <div class="space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border-cyan-500/30 space-y-3">
+              <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                <span>🛡️</span> 3. Zero-Serverless-Leak: AES-256-GCM Tokens
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Serverless architectures (Vercel) drop in-memory states upon cold start or redeploy. CypherMines uses an encrypted stateless token sent with each click:
+              </p>
+              <div class="bg-slate-900/90 p-3 rounded-lg border border-white/5 font-mono text-xs text-slate-300 space-y-1">
+                <div class="text-cyan-400">// Encrypted Payload structure</div>
+                <div>{ gameId, minePositions, revealedTiles, wager, seedHash }</div>
+                <div class="text-slate-500">// AES-256-GCM Ciphertext + 128-bit Auth Tag</div>
+              </div>
+              <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                <li><strong class="text-white">Zero State Loss:</strong> Game survives serverless lambdas shutting down.</li>
+                <li><strong class="text-white">Tamper Proof:</strong> Auth tag mismatch immediately voids forged client requests.</li>
+                <li><strong class="text-white">Replay Guard:</strong> Nonce and step index validated on every tile flip.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Mines Calculator -->
+        <div class="glass-panel rounded-2xl p-5 border border-white/10">
+          <h4 class="font-bold text-sm text-white font-mono mb-4 flex items-center gap-2">
+            <span>🧮</span> Interactive Mines Risk & Multiplier Calculator
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center mb-4">
+            <div>
+              <label class="text-xs text-slate-400 font-mono block mb-1">Mines Count (1 - 24):</label>
+              <input id="calc-mines" type="number" min="1" max="24" value="3" onchange="calculateMinesProgression()" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-sm focus:border-cyan-500 outline-none">
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 font-mono block mb-1">Gems Picked:</label>
+              <input id="calc-gems" type="number" min="1" max="22" value="4" onchange="calculateMinesProgression()" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-sm focus:border-cyan-500 outline-none">
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 font-mono block mb-1">Theoretical Fair Mult:</label>
+              <div id="res-fair-mult" class="text-base font-bold text-white font-mono py-1.5">1.7580x</div>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 font-mono block mb-1">Actual Payout (97% RTP):</label>
+              <div id="res-actual-mult" class="text-base font-bold text-emerald-400 font-mono py-1.5">1.7052x</div>
+            </div>
+          </div>
+          <div class="text-[11px] font-mono text-slate-400 bg-slate-900/60 p-2.5 rounded border border-white/5" id="res-prob-label">
+            Survival Probability: 56.88% • Cumulative House Edge: 3.00%
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 5: CYPHERPLINKO GALTON BOARD ================= -->
+    <section id="slide-5" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-cyan-400 font-mono text-xs mb-1">
+            <span>GAME ENGINE 04</span> • <span>GALTON BOARD & BINOMIAL PROBABILITY</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">CypherPlinko: Binomial Physics & Auto-Drop Guardrails</h2>
+          <p class="text-sm text-slate-400">
+            Bernoulli peg collisions, central Gaussian bell concentration, and algorithmic auto-drop risk mitigation.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Binomial Mechanics -->
+          <div class="space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border-cyan-500/30 space-y-3">
+              <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                <span>📍</span> 1. Bernoulli Peg Deflection Model
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                As the ball drops through $N$ rows of pegs ($N \in \{8, 12, 16\}$), every peg collision is an independent Bernoulli trial with $p = 0.5$ (Left = 0, Right = 1), derived directly from HMAC bit extraction:
+              </p>
+              <div class="math-block text-xs font-mono text-cyan-300">
+                $$X_i \sim \text{Bernoulli}(0.5), \quad i \in \{1, 2, \dots, N\}$$
+                $$\text{Landing Slot } S = \sum_{i=1}^N X_i \sim \text{Binomial}(N, 0.5)$$
+              </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border-violet-500/30 space-y-3">
+              <h4 class="font-bold text-violet-400 text-sm flex items-center gap-2">
+                <span>🔔</span> 2. Exact Binomial Distribution Formula
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                The probability $P(S = k)$ of the ball landing in slot index $k \in \{0, 1, \dots, N\}$ forms an exact symmetric binomial distribution:
+              </p>
+              <div class="math-block text-xs font-mono text-violet-300">
+                $$P(S = k) = \frac{\binom{N}{k}}{2^N} = \frac{N!}{k!(N-k)! \cdot 2^N}$$
+              </div>
+              <p class="text-xs text-slate-400">
+                Center slots ($k \approx N/2$) possess enormous probability mass (up to 19.64% for $N=16$), while extreme edge slots ($k=0$ or $k=16$) have probability $\frac{1}{65536} \approx 0.001525\%$.
+              </p>
+            </div>
+          </div>
+
+          <!-- Dual Multiplier Architecture & Auto-Drop Guardrails -->
+          <div class="space-y-4">
+            <div class="glass-panel rounded-2xl p-5 border-amber-500/30 space-y-3">
+              <h4 class="font-bold text-amber-400 text-sm flex items-center gap-2">
+                <span>🛡️</span> 3. Dual-Multiplier Mode & Central Slot Damping
+              </h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Why auto-drop was bleeding company margin and how we solved it:
+              </p>
+              <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside">
+                <li><strong class="text-white">Manual Mode (97.5% RTP):</strong> Balanced recreational distribution for single drops. Center slot returns $0.5\times-1.0\times$.</li>
+                <li><strong class="text-amber-400">Auto-Drop Mode (94.5% RTP):</strong> Center slots compressed to $0.2\times-0.4\times$ to prevent automated high-frequency martingale bots from draining platform liquidity.</li>
+                <li><strong class="text-rose-400">Hard Drop Cap (30 Drops):</strong> Auto-drop enforced ceiling with a single atomic 700ms cadence timer. Eliminates race-condition multi-ball exploits.</li>
+              </ul>
+            </div>
+
+            <!-- Binomial Odds Comparison Table -->
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-white/5 text-xs font-mono">
+              <div class="text-[11px] text-slate-400 uppercase tracking-wider mb-2 font-bold">16 Rows Plinko Slot Probabilities:</div>
+              <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
+                <div class="bg-slate-950 p-2 rounded border border-white/5">
+                  <div class="text-slate-400">Edge (Slot 0 / 16)</div>
+                  <div class="text-rose-400 font-bold">0.0015%</div>
+                  <div class="text-[9px] text-slate-500">1 in 65,536 (1000x)</div>
+                </div>
+                <div class="bg-slate-950 p-2 rounded border border-white/5">
+                  <div class="text-slate-400">Quarter (Slot 4 / 12)</div>
+                  <div class="text-amber-400 font-bold">2.78%</div>
+                  <div class="text-[9px] text-slate-500">1 in 36 (4x)</div>
+                </div>
+                <div class="bg-slate-950 p-2 rounded border border-white/5">
+                  <div class="text-slate-400">Center (Slot 8)</div>
+                  <div class="text-emerald-400 font-bold">19.64%</div>
+                  <div class="text-[9px] text-slate-500">1 in 5 (0.2x)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Galton Board Simulator Canvas -->
+        <div class="glass-panel rounded-2xl p-5 border border-white/10">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-bold text-sm text-white font-mono flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> Live Interactive Galton Board Canvas
+            </h4>
+            <div class="flex items-center gap-2">
+              <button onclick="dropPlinkoBall()" class="px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-xs rounded-lg transition shadow-lg">
+                Drop 1 Ball
+              </button>
+              <button onclick="dropPlinkoBatch(25)" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-bold font-mono text-xs rounded-lg transition shadow-lg">
+                Drop 25 Balls
+              </button>
+              <button onclick="resetPlinkoSim()" class="px-2 py-1 bg-slate-800 text-slate-300 font-mono text-xs rounded-lg border border-white/10">
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div class="md:col-span-2 relative h-64 bg-slate-950 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center">
+              <canvas id="plinko-canvas" width="500" height="260" class="max-w-full h-auto"></canvas>
+            </div>
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-white/5 text-xs font-mono space-y-3">
+              <div class="text-cyan-400 font-bold uppercase text-[11px]">Real-Time Distribution Stats</div>
+              <div class="flex justify-between border-b border-white/5 pb-1">
+                <span class="text-slate-400">Total Balls Dropped:</span>
+                <span id="plinko-total-balls" class="text-white font-bold">0</span>
+              </div>
+              <div class="flex justify-between border-b border-white/5 pb-1">
+                <span class="text-slate-400">Rows:</span>
+                <span class="text-white">8 Peg Rows</span>
+              </div>
+              <div class="flex justify-between border-b border-white/5 pb-1">
+                <span class="text-slate-400">Central Cluster Rate:</span>
+                <span id="plinko-center-rate" class="text-amber-300 font-bold">0.0%</span>
+              </div>
+              <div class="text-[10px] text-slate-400 leading-tight">
+                Notice how repeated drops naturally build a normal Gaussian curve around the center slots, visually proving our binomial theorem.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 6: SECURITY & CONCURRENCY ================= -->
+    <section id="slide-6" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-violet-400 font-mono text-xs mb-1">
+            <span>INFRASTRUCTURE DEFENSE</span> • <span>FINANCIAL INTEGRITY</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">Security, Concurrency & Anti-Exploit Architecture</h2>
+          <p class="text-sm text-slate-400">
+            How CypherRoll enforces bulletproof financial safety, eliminates race conditions, and thwarts bot syndicates.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-card rounded-2xl p-5 border-cyan-500/20 space-y-3">
+            <div class="text-cyan-400 text-2xl font-mono">⚡ 01</div>
+            <h4 class="font-bold text-white text-sm">Proof-of-Work Challenge</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              High-frequency automated endpoints demand client-side SHA-256 hash prefix collision before processing bets, rendering DDoS bots economically impossible.
+            </p>
+            <div class="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 p-2 rounded border border-cyan-500/20">
+              Diff: 4 leading hex zeroes (Average 65k hashes per request)
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-amber-500/20 space-y-3">
+            <div class="text-amber-400 text-2xl font-mono">🔒 02</div>
+            <h4 class="font-bold text-white text-sm">PostgreSQL Row Locks</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Every balance update executes inside an atomic transaction using <code class="text-amber-300">SELECT ... FOR UPDATE</code>. Parallel race conditions cannot double-spend wallet balances.
+            </p>
+            <div class="text-[10px] font-mono text-amber-300 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+              Zero balance overdraft or dual-payout exploits.
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-violet-500/20 space-y-3">
+            <div class="text-violet-400 text-2xl font-mono">⏱️ 03</div>
+            <h4 class="font-bold text-white text-sm">Session-Isolated Rate Limit</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              API routes implement a strict 2-3 second soft cooldown per wallet address. Rapid clicking or packet flooding triggers HTTP 429 backoff penalties.
+            </p>
+            <div class="text-[10px] font-mono text-violet-300 bg-violet-500/10 p-2 rounded border border-violet-500/20">
+              Auto-drop rate capped to 700ms single-flight.
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-emerald-500/20 space-y-3">
+            <div class="text-emerald-400 text-2xl font-mono">💎 04</div>
+            <h4 class="font-bold text-white text-sm">VIP Tier Rakeback Engine</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              A dynamic rewards ledger tracks turnover volume and returns 5% to 15% of the house edge directly back to players, driving loyalty while sustaining guaranteed operator margins.
+            </p>
+            <div class="text-[10px] font-mono text-emerald-300 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
+              Bronze: 5% • Silver: 8% • Gold: 12% • Diamond: 15%
+            </div>
+          </div>
+        </div>
+
+        <!-- Concurrency Sequence Diagram (Rendered visually) -->
+        <div class="glass-panel rounded-2xl p-6 border border-white/10">
+          <h4 class="font-bold text-sm text-white font-mono mb-4 flex items-center gap-2">
+            <span>🔄</span> Atomic Transaction Sequence & Anti-Race Guarantee
+          </h4>
+          <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono">
+            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-cyan-500/30 text-center">
+              <div class="text-cyan-400 font-bold mb-1">1. Bet Submission</div>
+              <div class="text-[11px] text-slate-400">Client sends signed wager + Client Seed</div>
+            </div>
+            <div class="text-slate-500 text-lg">➔</div>
+            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-amber-500/30 text-center">
+              <div class="text-amber-400 font-bold mb-1">2. DB Row Lock</div>
+              <div class="text-[11px] text-slate-400">PostgreSQL locks user balance row exclusively</div>
+            </div>
+            <div class="text-slate-500 text-lg">➔</div>
+            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-violet-500/30 text-center">
+              <div class="text-violet-400 font-bold mb-1">3. Crypto Compute</div>
+              <div class="text-[11px] text-slate-400">HMAC-SHA256 determines win/loss & multiplier</div>
+            </div>
+            <div class="text-slate-500 text-lg">➔</div>
+            <div class="w-full md:w-1/4 bg-slate-900 p-3 rounded-xl border border-emerald-500/30 text-center">
+              <div class="text-emerald-400 font-bold mb-1">4. Atomic Commit</div>
+              <div class="text-[11px] text-slate-400">Balance updated & row lock released</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SLIDE 7: INTERACTIVE LABS & LIVE VERIFIER ================= -->
+    <section id="slide-7" class="slide">
+      <div class="space-y-6">
+        <div class="border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2 text-emerald-400 font-mono text-xs mb-1">
+            <span>LIVE AUDIT LAB</span> • <span>IN-BROWSER CRYPTOGRAPHIC VERIFICATION</span>
+          </div>
+          <h2 class="text-3xl font-extrabold text-white">Live Cryptographic Audit Lab</h2>
+          <p class="text-sm text-slate-400">
+            Execute real in-browser Web Crypto API computations to mathematically reproduce and verify any bet outcome from scratch.
+          </p>
+        </div>
+
+        <!-- Live Web Crypto Verifier Panel -->
+        <div class="glass-panel rounded-2xl p-6 border-cyan-500/30">
+          <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+            <h4 class="font-bold text-white text-sm font-mono flex items-center gap-2">
+              <span>🔬</span> Web Crypto API Verification Tool
+            </h4>
+            <span class="text-xs text-cyan-400 font-mono">100% Client-Side Computation</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="text-xs font-mono text-slate-400 block mb-1">Server Seed (Secret Key):</label>
+              <input id="verify-server-seed" type="text" value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-xs focus:border-cyan-500 outline-none">
+            </div>
+            <div>
+              <label class="text-xs font-mono text-slate-400 block mb-1">Client Seed (Entropy):</label>
+              <input id="verify-client-seed" type="text" value="cypher_guest_seed_8492" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-xs focus:border-cyan-500 outline-none">
+            </div>
+            <div>
+              <label class="text-xs font-mono text-slate-400 block mb-1">Nonce (Bet Index):</label>
+              <input id="verify-nonce" type="number" min="0" value="1" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white font-mono text-xs focus:border-cyan-500 outline-none">
+            </div>
+          </div>
+
+          <div class="flex justify-end mb-4">
+            <button onclick="runLiveCryptoVerification()" class="px-5 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold font-mono text-xs rounded-xl shadow-lg transition">
+              Compute & Verify Proof ⚡
+            </button>
+          </div>
+
+          <!-- Real-time Computed Results Output -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-white/10 font-mono text-xs space-y-3">
+            <div>
+              <span class="text-slate-400">Server Seed SHA-256 Hash (Public Pre-Commitment):</span>
+              <div id="out-seed-hash" class="text-cyan-300 font-bold break-all mt-0.5">Click verify to compute...</div>
+            </div>
+            <div>
+              <span class="text-slate-400">HMAC-SHA256 Result (ServerSeed, ClientSeed:Nonce):</span>
+              <div id="out-hmac-hash" class="text-amber-300 font-bold break-all mt-0.5">-</div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-white/10">
+              <div class="bg-slate-900 p-2.5 rounded border border-white/5">
+                <span class="text-slate-400 block text-[10px]">Derived Dice Roll (0-99.99):</span>
+                <span id="out-dice-roll" class="text-white text-base font-bold">-</span>
+              </div>
+              <div class="bg-slate-900 p-2.5 rounded border border-white/5">
+                <span class="text-slate-400 block text-[10px]">Derived Crash Point:</span>
+                <span id="out-crash-point" class="text-rose-400 text-base font-bold">-</span>
+              </div>
+              <div class="bg-slate-900 p-2.5 rounded border border-white/5">
+                <span class="text-slate-400 block text-[10px]">16-Row Plinko Landing Slot:</span>
+                <span id="out-plinko-slot" class="text-cyan-400 text-base font-bold">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Executive Summary Checklist for Presentation -->
+        <div class="glass-panel rounded-2xl p-6 border border-white/10">
+          <h4 class="font-bold text-sm text-white font-mono mb-4 flex items-center gap-2">
+            <span>🏆</span> Complete Platform Architecture Scorecard
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+            <div class="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
+              <div class="text-emerald-400 font-bold flex items-center gap-1">✓ Non-Custodial</div>
+              <div class="text-slate-300 text-[11px] mt-1">Solana & EVM wallet integration with instant settlement</div>
+            </div>
+            <div class="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
+              <div class="text-emerald-400 font-bold flex items-center gap-1">✓ Provably Fair</div>
+              <div class="text-slate-300 text-[11px] mt-1">Pre-commitment SHA-256 + HMAC-SHA256 verification</div>
+            </div>
+            <div class="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
+              <div class="text-emerald-400 font-bold flex items-center gap-1">✓ Mathematically Guarded</div>
+              <div class="text-slate-300 text-[11px] mt-1">Exact house edge guarantees across all 4 games</div>
+            </div>
+            <div class="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
+              <div class="text-emerald-400 font-bold flex items-center gap-1">✓ Anti-Exploit Hardened</div>
+              <div class="text-slate-300 text-[11px] mt-1">Atomic row locks, PoW challenges, 30-drop cap</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= FIXED BOTTOM DECK NAVIGATION (Deck Mode Only) ================= -->
+  <footer class="slide-nav-fixed fixed bottom-0 left-0 right-0 z-40 glass-panel border-t border-white/10 px-4 sm:px-8 py-3 flex items-center justify-between">
+    <!-- Slide Counter & Title -->
+    <div class="flex items-center space-x-3 text-xs font-mono">
+      <span class="text-slate-400">Slide <span id="current-slide-num" class="text-cyan-400 font-bold">1</span> / 8</span>
+      <span class="text-slate-600 hidden sm:inline">•</span>
+      <span id="slide-name-label" class="text-slate-300 hidden sm:inline font-semibold">Executive Overview & Stack</span>
+    </div>
+
+    <!-- Slide Dot Indicators -->
+    <div class="flex items-center space-x-1.5" id="slide-dots">
+      <!-- Injected dynamically -->
+    </div>
+
+    <!-- Arrow Navigation Buttons -->
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/10 text-xs font-mono flex items-center gap-1 transition">
+        <span>←</span> Prev
+      </button>
+      <button onclick="nextSlide()" class="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold border border-cyan-400 text-xs font-mono flex items-center gap-1 transition shadow-lg">
+        Next <span>→</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ================= MASTER CONTROLLER SCRIPT ================= -->
+  <script>
+    // Slide Management
+    let currentSlide = 0;
+    const totalSlides = 8;
+    const slideNames = [
+      "Executive Overview & Web3 Stack",
+      "Provably Fair SHA-256 Engine",
+      "CypherDice: 98% Constant RTP",
+      "CypherCrash: Rocket Telemetry",
+      "CypherMines: Combinatorics",
+      "CypherPlinko: Galton Board",
+      "Security & Concurrency Guardrails",
+      "Interactive Audit Lab & Live Verifier"
+    ];
+
+    const speakerNotesData = [
+      "Welcome investors and reviewers. CypherRoll solves the trust deficit of traditional casinos using non-custodial Web3 architecture and provably fair cryptographic verification. Highlight our dual mode: real Solana/EVM wallets alongside instant friction-free demo mode.",
+      "Explain the 3-step provably fair commitment. Emphasize that the server seed hash is committed BEFORE the user places a bet. Because SHA-256 is preimage resistant, the house cannot tamper with or retroactively alter outcomes.",
+      "Point out our mathematical proof of 98% RTP on CypherDice. No matter where the user drags the target slider (from 1 to 98), the expected return remains strictly 0.98. The house always earns an exact 2% commission without variance skewing.",
+      "CypherCrash features real-time rocket telemetry. Highlight the 3% instant crash bust at 1.00x, which provides the casino's guaranteed 3% margin. The exponential trajectory follows M(t) = e^(0.06t).",
+      "CypherMines uses hypergeometric safe tile selection with a 3% house edge. Critically explain our stateless AES-256-GCM token system, which prevents serverless restarts on Vercel from causing 'game expired' errors.",
+      "Plinko models a real Galton board with 2^N paths. Address the user's specific concern about auto-drop bleeding money: we mitigated this by introducing dual multipliers (compressing center slots to 0.2x-0.4x) and putting a hard 30-drop cap with a 700ms cadence timer.",
+      "Cover our defensive architecture: Proof-of-Work anti-DDoS, distributed rate limiters, PostgreSQL row locks (SELECT FOR UPDATE) to eliminate race conditions, and our VIP rakeback system.",
+      "Demonstrate live in-browser cryptographic verification. Show that any user can paste their seeds into this exact tool and verify their game outcome with standard Web Crypto APIs."
+    ];
+
+    function initPresentation() {
+      renderDots();
+      updateSlideDisplay();
+      initCrashCanvas();
+      initPlinkoCanvas();
+      runLiveCryptoVerification();
+      calculateMinesProgression();
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          e.preventDefault();
+          nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          prevSlide();
+        } else if (e.key === 'f' || e.key === 'F') {
+          toggleFullScreen();
+        } else if (e.key === 'n' || e.key === 'N') {
+          toggleNotes();
+        } else if (e.key === 'm' || e.key === 'M') {
+          setMode(document.body.classList.contains('deck-mode') ? 'scroll' : 'deck');
+        }
+      });
+    }
+
+    function renderDots() {
+      const container = document.getElementById('slide-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-cyan-400' : 'bg-slate-700 hover:bg-slate-500'}`;
+        dot.onclick = () => jumpToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function updateSlideDisplay() {
+      if (document.body.classList.contains('deck-mode')) {
+        for (let i = 0; i < totalSlides; i++) {
+          const el = document.getElementById(`slide-${i}`);
+          if (el) {
+            if (i === currentSlide) {
+              el.classList.add('active');
+            } else {
+              el.classList.remove('active');
+            }
+          }
+        }
+      }
+
+      document.getElementById('current-slide-num').innerText = currentSlide + 1;
+      document.getElementById('slide-name-label').innerText = slideNames[currentSlide];
+      document.getElementById('section-select').value = currentSlide;
+      document.getElementById('notes-content').innerText = speakerNotesData[currentSlide];
+
+      renderDots();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideDisplay();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideDisplay();
+      }
+    }
+
+    function jumpToSlide(index) {
+      currentSlide = Math.max(0, Math.min(index, totalSlides - 1));
+      if (document.body.classList.contains('scroll-mode')) {
+        const target = document.getElementById(`slide-${currentSlide}`);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        updateSlideDisplay();
+      }
+    }
+
+    function setMode(mode) {
+      const btnDeck = document.getElementById('btn-mode-deck');
+      const btnScroll = document.getElementById('btn-mode-scroll');
+
+      if (mode === 'scroll') {
+        document.body.classList.remove('deck-mode');
+        document.body.classList.add('scroll-mode');
+        btnScroll.className = 'px-3 py-1 rounded bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/40 transition';
+        btnDeck.className = 'px-3 py-1 rounded text-slate-400 hover:text-white transition';
+      } else {
+        document.body.classList.remove('scroll-mode');
+        document.body.classList.add('deck-mode');
+        btnDeck.className = 'px-3 py-1 rounded bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/40 transition';
+        btnScroll.className = 'px-3 py-1 rounded text-slate-400 hover:text-white transition';
+        updateSlideDisplay();
+      }
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function toggleNotes() {
+      const el = document.getElementById('speaker-notes');
+      el.classList.toggle('hidden');
+    }
+
+    // ================= 1. CRASH INTERACTIVE GRAPH =================
+    let crashCanvas, crashCtx;
+    function initCrashCanvas() {
+      crashCanvas = document.getElementById('crash-canvas');
+      if (!crashCanvas) return;
+      crashCtx = crashCanvas.getContext('2d');
+      resizeCrashCanvas();
+      drawCrashGraph(0);
+      window.addEventListener('resize', resizeCrashCanvas);
+    }
+
+    function resizeCrashCanvas() {
+      if (!crashCanvas) return;
+      const rect = crashCanvas.getBoundingClientRect();
+      crashCanvas.width = rect.width * window.devicePixelRatio;
+      crashCanvas.height = rect.height * window.devicePixelRatio;
+      crashCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      drawCrashGraph(parseFloat(document.getElementById('crash-slider').value));
+    }
+
+    function drawCrashGraph(time) {
+      if (!crashCanvas || !crashCtx) return;
+      const w = crashCanvas.width / window.devicePixelRatio;
+      const h = crashCanvas.height / window.devicePixelRatio;
+
+      crashCtx.clearRect(0, 0, w, h);
+
+      // Grid lines
+      crashCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      crashCtx.lineWidth = 1;
+      for (let x = 0; x < w; x += 40) {
+        crashCtx.beginPath();
+        crashCtx.moveTo(x, 0);
+        crashCtx.lineTo(x, h);
+        crashCtx.stroke();
+      }
+      for (let y = 0; y < h; y += 30) {
+        crashCtx.beginPath();
+        crashCtx.moveTo(0, y);
+        crashCtx.lineTo(w, y);
+        crashCtx.stroke();
+      }
+
+      // Draw curve up to 'time'
+      crashCtx.beginPath();
+      crashCtx.strokeStyle = '#F43F5E';
+      crashCtx.lineWidth = 3;
+
+      const maxT = 40;
+      const currentMult = Math.exp(0.06 * time);
+
+      for (let t = 0; t <= time; t += 0.2) {
+        const x = (t / maxT) * w;
+        const m = Math.exp(0.06 * t);
+        const y = h - ((m - 1) / 10) * (h - 20) - 10;
+        if (t === 0) crashCtx.moveTo(x, y);
+        else crashCtx.lineTo(x, y);
+      }
+      crashCtx.stroke();
+
+      // Rocket Marker
+      const curX = (time / maxT) * w;
+      const curY = h - ((currentMult - 1) / 10) * (h - 20) - 10;
+
+      crashCtx.fillStyle = '#F59E0B';
+      crashCtx.beginPath();
+      crashCtx.arc(curX, Math.max(10, curY), 6, 0, Math.PI * 2);
+      crashCtx.fill();
+
+      // Update Labels
+      document.getElementById('crash-time-label').innerText = time.toFixed(1) + 's';
+      document.getElementById('crash-mult-label').innerText = currentMult.toFixed(2) + 'x';
+    }
+
+    function updateCrashScrub(val) {
+      drawCrashGraph(parseFloat(val));
+    }
+
+    let crashAnimInterval = null;
+    function animateCrashFlight() {
+      if (crashAnimInterval) clearInterval(crashAnimInterval);
+      let t = 0;
+      document.getElementById('crash-slider').value = 0;
+      crashAnimInterval = setInterval(() => {
+        t += 0.3;
+        if (t > 40) {
+          clearInterval(crashAnimInterval);
+          return;
+        }
+        document.getElementById('crash-slider').value = t;
+        drawCrashGraph(t);
+      }, 50);
+    }
+
+    // ================= 2. MINES CALCULATOR =================
+    function calculateMinesProgression() {
+      const mines = parseInt(document.getElementById('calc-mines').value) || 3;
+      const gems = parseInt(document.getElementById('calc-gems').value) || 4;
+      const totalTiles = 25;
+      const safeTiles = totalTiles - mines;
+
+      if (gems > safeTiles) {
+        document.getElementById('calc-gems').value = safeTiles;
+        calculateMinesProgression();
+        return;
+      }
+
+      let prob = 1.0;
+      let fairMult = 1.0;
+      for (let i = 0; i < gems; i++) {
+        prob *= (safeTiles - i) / (totalTiles - i);
+        fairMult *= (totalTiles - i) / (safeTiles - i);
+      }
+
+      const actualMult = Math.floor(fairMult * 0.97 * 10000) / 10000;
+
+      document.getElementById('res-fair-mult').innerText = fairMult.toFixed(4) + 'x';
+      document.getElementById('res-actual-mult').innerText = actualMult.toFixed(4) + 'x';
+      document.getElementById('res-prob-label').innerText = 
+        `Survival Probability: ${(prob * 100).toFixed(2)}% • Cumulative House Edge: 3.00% (${mines} Mines / ${safeTiles} Safe)`;
+    }
+
+    // ================= 3. PLINKO GALTON BOARD SIMULATOR =================
+    let plinkoCanvas, plinkoCtx;
+    let plinkoBalls = [];
+    let slotCounts = new Array(9).fill(0);
+    let totalPlinkoDrops = 0;
+
+    function initPlinkoCanvas() {
+      plinkoCanvas = document.getElementById('plinko-canvas');
+      if (!plinkoCanvas) return;
+      plinkoCtx = plinkoCanvas.getContext('2d');
+      requestAnimationFrame(updatePlinkoFrame);
+    }
+
+    function dropPlinkoBall() {
+      plinkoBalls.push({
+        x: 250,
+        y: 20,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: 1.5,
+        row: 0
+      });
+      totalPlinkoDrops++;
+    }
+
+    function dropPlinkoBatch(count) {
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => dropPlinkoBall(), i * 60);
+      }
+    }
+
+    function resetPlinkoSim() {
+      plinkoBalls = [];
+      slotCounts = new Array(9).fill(0);
+      totalPlinkoDrops = 0;
+      document.getElementById('plinko-total-balls').innerText = '0';
+      document.getElementById('plinko-center-rate').innerText = '0.0%';
+    }
+
+    function updatePlinkoFrame() {
+      if (!plinkoCtx) return;
+      const w = 500;
+      const h = 260;
+
+      plinkoCtx.clearRect(0, 0, w, h);
+
+      // Draw Pegs (8 rows)
+      const rows = 8;
+      const startY = 40;
+      const rowSpacing = 20;
+
+      plinkoCtx.fillStyle = '#64748B';
+      for (let r = 0; r < rows; r++) {
+        const pegsInRow = r + 3;
+        const spacing = 30;
+        const rowStartX = (w / 2) - ((pegsInRow - 1) * spacing) / 2;
+        const py = startY + r * rowSpacing;
+
+        for (let p = 0; p < pegsInRow; p++) {
+          const px = rowStartX + p * spacing;
+          plinkoCtx.beginPath();
+          plinkoCtx.arc(px, py, 2.5, 0, Math.PI * 2);
+          plinkoCtx.fill();
+        }
+      }
+
+      // Draw Bottom Multiplier Slots & Histogram
+      const slotWidth = 32;
+      const slotStartX = (w / 2) - (9 * slotWidth) / 2;
+      const bottomY = 220;
+
+      for (let s = 0; s < 9; s++) {
+        const sx = slotStartX + s * slotWidth;
+        // Draw bar
+        const maxBarH = 40;
+        const barH = totalPlinkoDrops > 0 ? (slotCounts[s] / totalPlinkoDrops) * maxBarH * 3 : 0;
+        
+        plinkoCtx.fillStyle = s === 4 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(6, 182, 212, 0.3)';
+        plinkoCtx.fillRect(sx + 2, bottomY - barH, slotWidth - 4, barH);
+
+        // Slot boundary
+        plinkoCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        plinkoCtx.strokeRect(sx, bottomY, slotWidth, 25);
+
+        // Slot text
+        plinkoCtx.fillStyle = '#94A3B8';
+        plinkoCtx.font = '9px monospace';
+        plinkoCtx.textAlign = 'center';
+        plinkoCtx.fillText(slotCounts[s], sx + slotWidth / 2, bottomY + 16);
+      }
+
+      // Update & Draw Balls
+      for (let i = plinkoBalls.length - 1; i >= 0; i--) {
+        const b = plinkoBalls[i];
+        b.y += b.vy;
+        b.x += b.vx;
+        b.vy += 0.15; // Gravity
+
+        // Check peg collisions roughly
+        if (b.y < startY + rows * rowSpacing) {
+          const currentRow = Math.floor((b.y - startY) / rowSpacing);
+          if (currentRow > b.row && currentRow < rows) {
+            b.row = currentRow;
+            // 50/50 deflection
+            b.vx = (Math.random() < 0.5 ? -1 : 1) * 1.2;
+          }
+        }
+
+        // Check bottom landing
+        if (b.y >= bottomY) {
+          const slot = Math.floor((b.x - slotStartX) / slotWidth);
+          const clampedSlot = Math.max(0, Math.min(8, slot));
+          slotCounts[clampedSlot]++;
+          plinkoBalls.splice(i, 1);
+
+          // Update HUD
+          document.getElementById('plinko-total-balls').innerText = totalPlinkoDrops;
+          const centerPct = ((slotCounts[4] / totalPlinkoDrops) * 100).toFixed(1);
+          document.getElementById('plinko-center-rate').innerText = centerPct + '%';
+          continue;
+        }
+
+        // Draw ball
+        plinkoCtx.fillStyle = '#06B6D4';
+        plinkoCtx.beginPath();
+        plinkoCtx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        plinkoCtx.fill();
+      }
+
+      requestAnimationFrame(updatePlinkoFrame);
+    }
+
+    // ================= 4. LIVE CRYPTO AUDIT (Web Crypto API) =================
+    async function sha256Hex(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function hmacSha256Hex(keyHex, message) {
+      const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const sig = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function runLiveCryptoVerification() {
+      const serverSeed = document.getElementById('verify-server-seed').value.trim();
+      const clientSeed = document.getElementById('verify-client-seed').value.trim();
+      const nonce = document.getElementById('verify-nonce').value.trim();
+
+      try {
+        // 1. Compute SHA-256 pre-commitment
+        const seedHash = await sha256Hex(serverSeed);
+        document.getElementById('out-seed-hash').innerText = seedHash;
+
+        // 2. Compute HMAC-SHA256
+        const payload = `${clientSeed}:${nonce}`;
+        const hmac = await hmacSha256Hex(serverSeed, payload);
+        document.getElementById('out-hmac-hash').innerText = hmac;
+
+        // 3. Derive Float
+        const intVal = parseInt(hmac.substring(0, 8), 16);
+        const floatVal = intVal / 4294967296;
+
+        // Dice Roll
+        const diceRoll = ((floatVal * 10000) / 100).toFixed(2);
+        document.getElementById('out-dice-roll').innerText = diceRoll;
+
+        // Crash Point
+        let crashPoint = 1.00;
+        if (floatVal >= 0.03) {
+          crashPoint = Math.max(1.01, Math.floor((0.97 / (1 - floatVal)) * 100) / 100);
+        }
+        document.getElementById('out-crash-point').innerText = crashPoint.toFixed(2) + 'x';
+
+        // Plinko (16 Rows)
+        let slot = 0;
+        for (let i = 0; i < 16; i++) {
+          const byteIdx = Math.floor(i / 8);
+          const bitIdx = i % 8;
+          const byte = parseInt(hmac.substring(byteIdx * 2, byteIdx * 2 + 2), 16);
+          slot += ((byte >> bitIdx) & 1);
+        }
+        document.getElementById('out-plinko-slot').innerText = `Slot ${slot} / 16`;
+
+      } catch (err) {
+        console.error("Crypto verification error:", err);
+      }
+    }
+
+    // Initialize when DOM loaded
+    window.addEventListener('DOMContentLoaded', initPresentation);
+  </script>
+</body>
+</html>
