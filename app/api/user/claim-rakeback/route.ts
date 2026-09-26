@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const sessionMatch = req.headers.get('cookie')?.match(/cr_session=([^;]+)/);
+    const cookieHeader = req.headers.get('cookie') || '';
+    const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/) || cookieHeader.match(/cr_session=([^;]+)/);
     const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
     
     if (!session) {

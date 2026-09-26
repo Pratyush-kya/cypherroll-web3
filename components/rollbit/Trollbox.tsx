@@ -116,7 +116,11 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
       const res = await fetch('/api/trollbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: originalMessage.trim() }),
+        credentials: 'include',
+        body: JSON.stringify({
+          message: originalMessage.trim(),
+          walletAddress: userWallet || undefined,
+        }),
       });
       
       const data = await res.json();
@@ -184,22 +188,30 @@ export default function Trollbox({ isOpen, onClose, userWallet, userVip }: Troll
       </div>
 
       {/* Input Box */}
-      <form onSubmit={handleSendMessage} className="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
-        <input
-          type="text"
-          placeholder={userWallet ? "Send message..." : "Connect wallet to chat"}
-          value={inputMessage}
-          maxLength={200}
-          onChange={(e) => setInputMessage(e.target.value)}
-          className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-body text-foreground focus:outline-none focus:border-primary"
-        />
-        <button
-          type="submit"
-          disabled={!inputMessage.trim() || isSending}
-          className="px-3 py-2 bg-primary hover:bg-amber-500 disabled:opacity-40 text-slate-950 rounded-xl font-bold transition-colors flex items-center justify-center shadow-md shadow-amber-500/20"
-        >
-          <Send className="w-3.5 h-3.5" />
-        </button>
+      <form onSubmit={handleSendMessage} className="p-3 bg-slate-950 border-t border-slate-800 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder={userWallet ? `Chat as ${truncateHash(userWallet, 4, 3)}...` : "Connect wallet to chat"}
+            value={inputMessage}
+            disabled={!userWallet}
+            maxLength={200}
+            onChange={(e) => setInputMessage(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-body text-foreground focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <button
+            type="submit"
+            disabled={!userWallet || !inputMessage.trim() || isSending}
+            className="px-3 py-2 bg-primary hover:bg-amber-500 disabled:opacity-40 text-slate-950 rounded-xl font-bold transition-colors flex items-center justify-center shadow-md shadow-amber-500/20"
+          >
+            <Send className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {!userWallet && (
+          <p className="text-[10px] text-amber-400 font-mono text-center">
+            ⚠️ Connect your wallet in the top bar to participate in chat.
+          </p>
+        )}
       </form>
     </div>
   );

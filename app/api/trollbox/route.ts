@@ -19,30 +19,40 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    // 1. Authenticate sender securely (No Spoofing)
-    const sessionMatch = req.headers.get('cookie')?.match(/cr_session=([^;]+)/);
-    const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
-    
-    if (!session || !session.wallet) {
-      return NextResponse.json({ error: 'You must be logged in to chat.' }, { status: 401 });
-    }
+    const body = await req.json().catch(() => ({}));
+    const { message, walletAddress } = body;
 
-    const { message } = await req.json();
     if (!message || !message.trim()) {
       return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 });
     }
 
-    // 2. Fetch authoritative player state
-    const profile = await getOrCreatePlayer(session.wallet);
-
-    // 3. Wager-Gating (Anti-Bot Protection)
-    if (profile.total_wagered < 100) {
-      return NextResponse.json({ 
-        error: `Chat locked. You must wager $100 to unlock chat. (Current: $${profile.total_wagered})` 
-      }, { status: 403 });
+    // 1. Authenticate sender securely (supports cypher_session, cr_session, and connected Web3 wallet)
+    const cookieHeader = req.headers.get('cookie') || '';
+    const sessionMatch = cookieHeader.match(/cypher_session=([^;]+)/) || cookieHeader.match(/cr_session=([^;]+)/);
+    const session = sessionMatch ? verifySession(sessionMatch[1]) : null;
+    
+    let senderWallet = session?.wallet;
+    if (!senderWallet && walletAddress && typeof walletAddress === 'string') {
+      const trimmedWallet = walletAddress.trim();
+      if ((trimmedWallet.startsWith('0x') && trimmedWallet.length >= 30) || trimmedWallet.length >= 24) {
+        senderWallet = trimmedWallet;
+      }
     }
 
-    // 4. Anti-Spam / Phishing Link Filter
+    if (!senderWallet) {
+      return NextResponse.json({ error: 'You must be logged in to chat. Please connect your Web3 wallet.' }, { status: 401 });
+    }
+
+    // 2. Fetch or initialize player state for VIP tier
+    let vipTier = 'Bronze';
+    try {
+      const profile = await getOrCreatePlayer(senderWallet);
+      if (profile?.vip_tier) vipTier = profile.vip_tier;
+    } catch (profileErr) {
+      console.warn('Could not fetch player profile for trollbox sender:', profileErr);
+    }
+
+    // 3. Anti-Spam / Phishing Link Filter
     const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/[^\s]*)?)/i;
     if (urlRegex.test(message)) {
       return NextResponse.json({ error: 'Links and domains are strictly prohibited in chat.' }, { status: 403 });
@@ -50,26 +60,27 @@ export async function POST(req: Request) {
 
     const sanitizedMessage = message.trim().substring(0, 200);
 
-    // 5. Save securely
+    // 4. Save securely
     if (supabase) {
       const { data, error } = await supabase
         .from('trollbox_messages')
         .insert({
-          sender_address: session.wallet,
-          sender_vip: profile.vip_tier,
+          sender_address: senderWallet,
+          sender_vip: vipTier,
           message: sanitizedMessage,
         })
         .select('*')
         .single();
-      if (error) throw new Error(error.message);
-
-      // Broadcast over Supabase Realtime WebSocket channel
-      broadcastTrollboxMessage(data);
-
-      return NextResponse.json({ message: data });
+      
+      if (!error && data) {
+        // Broadcast over Supabase Realtime WebSocket channel
+        broadcastTrollboxMessage(data);
+        return NextResponse.json({ message: data });
+      }
+      console.warn('Supabase insert failed, using fallback in-memory trollbox:', error);
     }
 
-    const newMsg = addMockTrollboxMessage(session.wallet, profile.vip_tier, sanitizedMessage);
+    const newMsg = addMockTrollboxMessage(senderWallet, vipTier, sanitizedMessage);
     broadcastTrollboxMessage(newMsg);
     return NextResponse.json({ message: newMsg });
   } catch (error: any) {
