@@ -530,19 +530,18 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5">
-                  <tr><td class="py-2 text-amber-300">2.00</td><td>2.00%</td><td class="py-2 text-right font-bold text-white">49.0000x</td></tr>
-                  <tr><td class="py-2 text-amber-300">10.00</td><td>10.00%</td><td class="py-2 text-right font-bold text-white">9.8000x</td></tr>
-                  <tr><td class="py-2 text-amber-300">25.00</td><td>25.00%</td><td class="py-2 text-right font-bold text-white">3.9200x</td></tr>
-                  <tr class="bg-cyan-500/10"><td class="py-2 font-bold text-cyan-300">50.00</td><td>50.00%</td><td class="py-2 text-right font-bold text-cyan-300">1.9600x</td></tr>
-                  <tr><td class="py-2 text-amber-300">75.00</td><td>75.00%</td><td class="py-2 text-right font-bold text-white">1.3066x</td></tr>
-                  <tr><td class="py-2 text-amber-300">95.00</td><td>95.00%</td><td class="py-2 text-right font-bold text-white">1.0315x</td></tr>
-                  <tr><td class="py-2 text-amber-300">98.00</td><td>98.00%</td><td class="py-2 text-right font-bold text-white">1.0000x</td></tr>
+                  <tr><td class="py-2 text-amber-300">2.00</td><td>2.00%</td><td class="py-2 text-right font-bold text-white">48.0000x</td></tr>
+                  <tr><td class="py-2 text-amber-300">10.00</td><td>10.00%</td><td class="py-2 text-right font-bold text-white">9.6000x</td></tr>
+                  <tr><td class="py-2 text-amber-300">25.00</td><td>25.00%</td><td class="py-2 text-right font-bold text-white">3.8400x</td></tr>
+                  <tr class="bg-cyan-500/10"><td class="py-2 font-bold text-cyan-300">50.00</td><td>50.00%</td><td class="py-2 text-right font-bold text-cyan-300">1.9200x</td></tr>
+                  <tr><td class="py-2 text-amber-300">75.00</td><td>75.00%</td><td class="py-2 text-right font-bold text-white">1.2800x</td></tr>
+                  <tr><td class="py-2 text-amber-300">95.00</td><td>95.00%</td><td class="py-2 text-right font-bold text-white">1.0105x</td></tr>
                 </tbody>
               </table>
             </div>
 
             <div class="mt-4 pt-4 border-t border-white/10 text-[11px] text-slate-400">
-              💡 <span class="text-slate-200">Memory Aid:</span> Higher target = higher win chance, lower multiplier. House edge remains 2.0% regardless of slider position!
+              💡 <span class="text-slate-200">Memory Aid:</span> Higher target = higher win chance, lower multiplier. House edge remains constant at 4.0% across all allowed target positions [2.00, 95.00] with a $2,500 maximum profit cap.
             </div>
           </div>
         </div>
@@ -690,7 +689,7 @@
                 <span>💎</span> 1. Combinatorial Safe Tile Probability
               </h4>
               <p class="text-xs text-slate-300 leading-relaxed">
-                In a $5 \times 5$ board (25 tiles) with $M$ mines, safe tiles $S = 25 - M$. Probability of picking safe tile $i+1$ given $i$ gems already found without replacement:
+                In a $5 \times 5$ board (25 tiles) with $M$ mines ($M \in [10, 24]$). Low-risk presets (1, 3, 5 mines) are completely removed to protect operator margin. Safe tiles $S = 25 - M$. At default 10 mines, the player faces an immediate $40.0\%$ bust probability on their very first pick:
               </p>
               <div class="math-block text-xs font-mono text-emerald-300">
                 $$P(\text{Safe}_i) = \frac{25 - M - i}{25 - i}$$
@@ -1117,7 +1116,7 @@
     const slideNames = [
       "Executive Overview & Web3 Stack",
       "Provably Fair SHA-256 Engine",
-      "CypherDice: 98% Constant RTP",
+      "CypherDice: 96% Optimal RTP",
       "CypherCrash: Rocket Telemetry",
       "CypherMines: Combinatorics",
       "CypherPlinko: Galton Board",
@@ -1128,9 +1127,9 @@
     const speakerNotesData = [
       "Welcome investors and reviewers. CypherRoll solves the trust deficit of traditional casinos using non-custodial Web3 architecture and provably fair cryptographic verification. Highlight our dual mode: real Solana/EVM wallets alongside instant friction-free demo mode.",
       "Explain the 3-step provably fair commitment. Emphasize that the server seed hash is committed BEFORE the user places a bet. Because SHA-256 is preimage resistant, the house cannot tamper with or retroactively alter outcomes.",
-      "Point out our mathematical proof of 98% RTP on CypherDice. No matter where the user drags the target slider (from 1 to 98), the expected return remains strictly 0.98. The house always earns an exact 2% commission without variance skewing.",
+      "Point out our mathematical proof of 96% RTP on CypherDice with an optimal 4.0% house edge. Capping the slider between 2.00 and 95.00 and enforcing a $2,500 max profit limit protects operator solvency against bot rakeback churning and whale blowouts.",
       "CypherCrash features real-time rocket telemetry. Highlight the 3% instant crash bust at 1.00x, which provides the casino's guaranteed 3% margin. The exponential trajectory follows M(t) = e^(0.06t).",
-      "CypherMines uses hypergeometric safe tile selection with a 3% house edge. Critically explain our stateless AES-256-GCM token system, which prevents serverless restarts on Vercel from causing 'game expired' errors.",
+      "CypherMines starts at 10 mines (40% initial bust risk). Low-risk presets of 1, 3, and 5 mines have been removed to eliminate low-variance grinding. Stateless AES-256-GCM tokens prevent serverless restarts from causing game expired errors.",
       "Plinko models a real Galton board with 2^N paths. Address the user's specific concern about auto-drop bleeding money: we mitigated this by introducing dual multipliers (compressing center slots to 0.2x-0.4x) and putting a hard 30-drop cap with a 700ms cadence timer.",
       "Cover our defensive architecture: Proof-of-Work anti-DDoS, distributed rate limiters, PostgreSQL row locks (SELECT FOR UPDATE) to eliminate race conditions, and our VIP rakeback system.",
       "Demonstrate live in-browser cryptographic verification. Show that any user can paste their seeds into this exact tool and verify their game outcome with standard Web Crypto APIs."
