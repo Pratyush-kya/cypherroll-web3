@@ -18,7 +18,7 @@ const FAQS: FAQItem[] = [
   {
     category: "Game Math",
     question: "What are the House Edges and RTPs across CypherRoll games?",
-    answer: "CypherDice offers a 1.00% House Edge (99.00% RTP), one of the most generous in the industry. CypherCrash offers a 2.00% House Edge (98.00% RTP). Outcomes are derived directly from the underlying cryptographic HMAC bits without arbitrary house adjustments."
+    answer: "CypherDice operates with a 4.00% House Edge (96.00% RTP), ensuring stable liquidity and solvency. CypherCrash operates with a 3.00% House Edge (97.00% RTP), CypherMines with 3.00%–4.00% House Edge, and CypherPlinko with 97.5% manual / 94.5% auto-drop RTP. All outcomes are derived deterministically from HMAC-SHA256."
   },
   {
     category: "Privacy & Tor",
