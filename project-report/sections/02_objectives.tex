@@ -1,0 +1,36 @@
+\newpage
+\noindent{\Large \textbf{CHAPTER 2}}\par
+\vspace{0.2cm}
+\noindent{\Large \textbf{OBJECTIVES OF THE PROJECT}}\par
+\vspace{0.4cm}
+
+\subsection*{2.1 Introduction}
+The success of the CypherRoll system depends on clearly defined engineering and architectural objectives that guide its design and implementation. These objectives focus on solving the systemic limitations of centralized online gambling by leveraging decentralized blockchain settlement, cryptographic provable fairness protocols, hardware-accelerated 3D WebGL rendering, and secure off-chain state computation. This chapter outlines the primary and specific objectives of the project.
+
+\subsection*{2.2 Primary Objective}
+The primary objective of the CypherRoll project is to develop a decentralized, provably fair Web3 crypto casino platform that enables users to wager and play cinematic 3D arcade games with mathematically verifiable randomness and non-custodial smart contract fund settlement. The system guarantees that game outcomes cannot be manipulated by either the house or the player, while enabling seamless onboarding through Web3 wallets like MetaMask.
+
+\subsection*{2.3 Specific Objectives}
+The specific technical objectives formulated to realize this platform comprise:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Implement Cryptographic Provable Fairness:} One of the key objectives of the system is to construct an open, mathematically verifiable commit-reveal framework using HMAC-SHA256. The system ensures that a 256-bit server seed is cryptographically committed (via SHA-256) before any wager is placed, and combines it with a player-chosen client seed and sequential nonce to produce deterministic, tamper-proof dice rolls and crash multipliers.
+    
+    \item \textbf{Develop a Non-Custodial Smart Contract Escrow Vault:} Another vital objective is to design, write, test, and deploy a secure Solidity smart contract (\texttt{CypherRollVault.sol}) on Ethereum and Layer-2 networks (such as Base Sepolia). The contract enforces decentralized escrow over user deposits and executes payouts only when presented with cryptographically valid EIP-712 operator signatures.
+    
+    \item \textbf{Integrate Zero-KYC Web3 Authentication (SIWE):} The project aims to eliminate intrusive passwords, email registrations, and identity verification by implementing Sign-In with Ethereum (EIP-4361). Users authenticate directly via their private key in MetaMask by signing a challenge nonce, establishing a cryptographically verified session without incurring transaction gas fees.
+    
+    \item \textbf{Construct High-Fidelity 3D WebGL Game Environments:} To overcome the visual limitations of traditional 2D crypto casinos, the project aims to develop fully customized native Three.js 3D WebGL environments for CypherDice and CypherCrash. This includes real-time physics lerping, dynamic particle engines, camera shakes, and optimized Draco-compressed 3D assets operating at 60 frames per second.
+    
+    \item \textbf{Implement Real-Time On-Chain Transaction Verification:} Another objective is to ensure efficient communication between the frontend, backend, and blockchain RPC nodes. The system incorporates an automated deposit listener via Viem that verifies on-chain transaction receipts on Base Sepolia and Ethereum Sepolia while enforcing idempotency checks to prevent double-crediting.
+    
+    \item \textbf{Enforce Dynamic Financial Risk Controls (Kelly Criterion):} To guarantee the solvency of the casino vault against catastrophic runs or statistical outliers, the system incorporates Kelly Criterion mathematical caps, dynamically restricting the maximum player profit for any wager to $\le 1\%$ of total vault reserves.
+    
+    \item \textbf{Integrate Regulatory Compliance and Security Defenses:} The project focuses on maintaining security and operational integrity through multi-layer defenses, including automated OFAC sanctions and AML screening oracles to quarantine tainted mixer funds, client-side Proof-of-Work (PoW) rate-limiting against bot attacks, and multi-sig thresholds for high-value payouts ($> \$2,500$ USDC).
+    
+    \item \textbf{Provide Complete Testnet and Zero-Cost Auditability:} Finally, the system is designed to run seamlessly on Ethereum Sepolia and Base Sepolia testnets, allowing students, evaluators, and auditors to verify wallet authentication, contract deposits, and payout vouchers without spending real money.
+\end{enumerate}
+
+\subsection*{2.4 Conclusion of the Chapter}
+This chapter defined the primary and specific technical objectives of the CypherRoll project. These objectives provide a precise roadmap for the system's design and implementation, ensuring that the platform solves the foundational challenges of trust, custody, and performance in online gaming.
+
+The next chapter will examine the existing systems in the market, analyze their workflow and architecture, and identify their inherent limitations.

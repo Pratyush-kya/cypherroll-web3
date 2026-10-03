@@ -1,0 +1,55 @@
+\section{Full-Stack Implementation and 3D WebGL Pipeline}
+
+\subsection{Frontend Architecture and Design Philosophy}
+CypherRoll embraces a high-tech OLED cyberpunk visual paradigm (\texttt{\#0F172A} slate background, \texttt{\#F59E0B} gold accents, and \texttt{\#8B5CF6} purple telemetry indicators). The frontend architecture is organized hierarchically:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Global Navigation (\texttt{Navbar.tsx}):} Houses the dual-chain wallet selector (Solana vs EVM), active balance indicator, Demo/Real mode toggle switch, and instant notification feeds.
+    \item \textbf{Non-Custodial Cashier (\texttt{CashierModal.tsx}):} Provides multi-network deposit addresses, manual on-chain transaction hash verification inputs, and EIP-712 withdrawal voucher viewers.
+    \item \textbf{Provably Fair Modal (\texttt{ProvablyFairModal.tsx}):} Exposes active seed pairs, client seed regeneration tools, and historical roll verification calculators.
+\end{itemize}
+
+\subsection{Hardware-Accelerated 3D WebGL Engine}
+Unlike typical 2D web casinos using static canvas sprites or prerendered MP4 animations, CypherRoll runs custom 3D WebGL environments:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{CypherDice WebGL Scene:}
+    \begin{itemize}
+        \item Utilizes Three.js perspective cameras with realistic depth-of-field and dynamic spotlights.
+        \item Polyhedral dice models are loaded with Draco compression, reducing asset footprint by over $80\%$ down to $< 1.2\text{MB}$.
+        \item Rotational physics simulate real-time aerodynamic tumbling via cubic Bezier interpolation (\texttt{lerp}), settling deterministically onto the computed dice face.
+    \end{itemize}
+    \item \textbf{CypherCrash Rocket Flight Canvas:}
+    \begin{itemize}
+        \item Features dynamic particle systems simulating rocket thrust plumes with additive blending.
+        \item Camera trajectories scale exponentially in proportion to the active multiplier $C(t) = e^{0.06 t}$.
+        \item Screen-shake and chromatic aberration shaders engage upon catastrophic crash trigger events.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Database Schema and ACID Ledger Design}
+The persistent financial state is preserved within Supabase PostgreSQL 16 utilizing normalized relational schema design:
+
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{} l l X @{}}
+\toprule
+\textbf{Table Name} & \textbf{Primary Key} & \textbf{Attributes \& Foreign Keys} \\
+\midrule
+\texttt{users} & \texttt{wallet (TEXT)} & \texttt{balance, chain, vip\_tier, rakeback\_accumulated, created\_at} \\
+\texttt{transactions} & \texttt{id (UUID)} & \texttt{wallet, type (DEPOSIT/WITHDRAW), amount, tx\_hash, status, network} \\
+\texttt{bets} & \texttt{id (UUID)} & \texttt{wallet, game (DICE/CRASH), wager, multiplier, payout, nonce, server\_seed\_id} \\
+\texttt{seeds} & \texttt{id (UUID)} & \texttt{wallet, server\_seed, server\_seed\_hash, client\_seed, nonce, active} \\
+\bottomrule
+\end{tabularx}
+\caption{Supabase PostgreSQL Database Schema}
+\end{table}
+
+All financial balance mutations utilize atomic SQL statements with row-level locks:
+\begin{lstlisting}[language=SQL,caption={Atomic Balance Mutation with Row-Level Lock}]
+BEGIN;
+  SELECT balance FROM users WHERE wallet = '0x...' FOR UPDATE;
+  UPDATE users SET balance = balance + 50.00 WHERE wallet = '0x...';
+  INSERT INTO transactions(wallet, type, amount, tx_hash, status)
+  VALUES ('0x...', 'DEPOSIT', 50.00, '0xabc...', 'CONFIRMED');
+COMMIT;
+\end{lstlisting}

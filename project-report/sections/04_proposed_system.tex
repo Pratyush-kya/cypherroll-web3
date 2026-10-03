@@ -1,0 +1,62 @@
+\newpage
+\noindent{\Large \textbf{CHAPTER 4}}\par
+\vspace{0.2cm}
+\noindent{\Large \textbf{PROPOSED SYSTEM}}\par
+\vspace{0.4cm}
+
+\subsection*{4.1 Introduction}
+To overcome the severe limitations and vulnerabilities of centralized gaming platforms, the CypherRoll system proposes a hybrid Web3 gaming architecture that integrates cryptographic provable fairness with non-custodial smart contracts. The proposed system is designed to provide a secure, transparent, and mathematically tamper-proof environment for playing interactive 3D casino games.
+
+Unlike traditional platforms, CypherRoll ensures that users retain sovereignty over their assets and identity. Game randomness is cryptographically predetermined using an open HMAC-SHA256 commit-reveal protocol, while deposits and withdrawals are governed by an on-chain Solidity escrow vault (\texttt{CypherRollVault.sol}) deployed across EVM networks such as Base Sepolia and Ethereum Sepolia.
+
+\subsection*{4.2 Overview of the Proposed System}
+CypherRoll is a web-based decentralized application that allows players to connect their Web3 wallets (such as MetaMask or Phantom), deposit funds into a non-custodial smart contract escrow, and participate in arcade games including CypherDice, CypherCrash, Mines, and Plinko.
+
+The architecture decouples fast real-time game rendering and outcome generation from durable on-chain financial settlement. When a user places a wager, the game outcome is computed deterministically in less than one millisecond off-chain using the player's client seed and the server's pre-committed seed hash. The 3D WebGL engine immediately renders the physics-driven simulation at 60 FPS. Once a player wishes to withdraw, the backend generates an EIP-712 cryptographic signature, empowering the player to claim their balance directly from the smart contract on-chain.
+
+\subsection*{4.3 Key Features of the Proposed System}
+The proposed CypherRoll system incorporates several state-of-the-art features:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Cryptographic Provable Fairness:} The system implements a 100\% transparent commit-reveal protocol based on HMAC-SHA256. The server commits to a secret seed via its SHA-256 hash before bets are placed. The user can customize their client seed, guaranteeing that neither party can manipulate the roll.
+    \item \textbf{Non-Custodial Escrow Vault (\texttt{CypherRollVault.sol}):} Treasury assets are secured within an immutable Solidity contract supporting native ETH and standard ERC-20 tokens (e.g., USDC). Withdrawals require valid cryptographic signatures from the casino operator, preventing unauthorized fund drains.
+    \item \textbf{Zero-KYC Authentication via SIWE (EIP-4361):} Users log in by signing a cryptographic challenge message using their private key in MetaMask. This provides instant, passwordless authentication without collecting personal information or incurring gas fees.
+    \item \textbf{Cinematic 3D WebGL Gaming:} Games are rendered using Three.js with realistic lighting, dynamic camera shakes, particle thruster plumes, and Draco-compressed 3D models running smoothly at 60 frames per second.
+    \item \textbf{Automated AML and OFAC Sanctions Screening:} An integrated security oracle automatically screens connecting addresses against sanctioned entity lists and high-risk mixers, quarantining illicit funds while protecting ordinary user privacy.
+    \item \textbf{Kelly Criterion Dynamic Treasury Guard:} The maximum profit allowed for any single wager is mathematically capped at $\le 1\%$ of total vault reserves, ensuring long-term bankroll solvency.
+\end{itemize}
+
+\subsection*{4.4 Working of the Proposed System}
+The operational lifecycle of the CypherRoll system proceeds as follows:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Wallet Connection and Authentication:} The player connects MetaMask via RainbowKit. The platform issues a challenge nonce via \texttt{GET /api/auth/nonce}. The player signs the challenge message in MetaMask, and \texttt{POST /api/auth/verify} validates the signature, issuing an authenticated session cookie.
+    \item \textbf{Vault Deposit:} The player deposits ETH or USDC into \texttt{CypherRollVault.sol}. The contract emits a \texttt{Deposited} event. The player submits the transaction hash to \texttt{/api/cashier/verify-deposit}, where Viem inspects the on-chain receipt and credits the ledger balance atomically in Supabase.
+    \item \textbf{Wagering and Provably Fair Execution:} The player configures their wager and target odds. The server computes:
+    $$\mathcal{H} = \text{HMAC-SHA256}(S_{\text{srv}}, \; S_{\text{cli}} : N)$$
+    The outcome is mapped deterministically to a dice roll or crash multiplier. The Three.js 3D canvas animates the roll, and the player's balance updates in the ACID ledger with row-level locks.
+    \item \textbf{Cryptographic Withdrawal (EIP-712):} When the user clicks withdraw, \texttt{POST /api/cashier/withdraw} validates their balance and emits an EIP-712 typed signature voucher signed by the casino operator.
+    \item \textbf{On-Chain Settlement:} The user submits the voucher to \texttt{CypherRollVault.withdraw()} on-chain via MetaMask, triggering autonomous token release directly into the user's wallet.
+\end{enumerate}
+
+\subsection*{4.5 Advantages of the Proposed System}
+The proposed system offers substantial advantages over legacy platforms:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Elimination of Fraud and Manipulation:} Mathematical commit-reveal algorithms make it impossible for the casino to alter odds or outcomes retroactively.
+    \item \textbf{Self-Custody and Security:} Funds reside in an on-chain smart contract rather than an opaque corporate bank account, eliminating insolvency and exit scam risks.
+    \item \textbf{High-Speed Interactivity:} Off-chain computation delivers instantaneous game feedback without requiring players to wait for blockchain block confirmations for every roll.
+    \item \textbf{Privacy Preservation:} Players authenticate cryptographically via their Web3 wallet without surrendering personal identity documents or undergoing invasive KYC procedures.
+\end{itemize}
+
+\subsection*{4.6 Feasibility of the System}
+\paragraph{Technical Feasibility}
+The CypherRoll system is technically feasible as it leverages well-established, industry-standard technologies. Next.js 14 provides a robust full-stack framework; Three.js provides mature, hardware-accelerated 3D graphics; and Viem, Wagmi, and Solidity offer enterprise-grade Web3 development tooling. All cryptographic protocols (HMAC-SHA256, EIP-712, EIP-4361) are mathematically proven and supported by widespread libraries.
+
+\paragraph{Economic Feasibility}
+Economically, the system is exceptionally cost-effective. By deploying the escrow vault on Layer-2 networks (Base Sepolia and Base Mainnet), transaction gas fees for deposits and withdrawals are reduced by over $99.8\%$ compared to Ethereum Layer-1. During testing and grading, the platform operates completely free of charge on public testnets using faucets.
+
+\paragraph{Operational Feasibility}
+Operationally, the system is intuitive and user-friendly. Users familiar with Web3 browser extensions like MetaMask can onboard and play within seconds. The intuitive Cashier modal, clear provably fair seed inspectors, and real-time live bet tickers ensure high accessibility and operational clarity.
+
+\subsection*{4.7 Conclusion of the Chapter}
+This chapter outlined the proposed CypherRoll system, including its architectural overview, key features, working methodology, advantages, and technical, economic, and operational feasibility. The proposed architecture solves the fundamental challenges of centralized gambling by introducing cryptographic fairness and non-custodial smart contract security.
+
+The next chapter will detail the hardware, software, functional, and non-functional system requirements necessary for implementing and running the platform.

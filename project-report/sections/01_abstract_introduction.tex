@@ -1,0 +1,42 @@
+\section{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+
+Online gaming and iGaming platforms constitute a multi-billion dollar global sector, yet legacy centralized platforms suffer from acute transparency deficits, commonly termed ``black-box algorithms''. Players have no cryptographic guarantees that game results are unmanipulated, nor do they retain custody of deposited funds. In contrast, fully on-chain gaming models implemented on Layer-1 blockchains suffer from prohibitively high transaction gas costs and multi-second block latency, rendering real-time interactive gameplay impossible.
+
+This project presents \textbf{CypherRoll}, an enterprise-grade, provably fair Web3 gaming ecosystem engineered with a \textbf{3-Tier Hybrid Architecture} that synthesizes off-chain real-time execution with non-custodial on-chain cryptographic settlement. The presentation layer features high-fidelity, hardware-accelerated 3D WebGL environments built on Next.js 14 and Three.js. The fairness tier enforces mathematical verifiability through Hash-based Message Authentication Codes (HMAC-SHA256) using a pre-committed server seed, user-chosen client seed, and sequential nonce. Player onboarding leverages zero-knowledge and zero-KYC cryptographic authentication via Sign-In with Ethereum (SIWE - EIP-4361). Financial settlement is anchored by a custom Solidity smart contract (\texttt{CypherRollVault.sol}) deployed across EVM networks (Ethereum Sepolia, Base, Arbitrum), executing payouts via EIP-712 typed structured cryptographic signatures. Experimental evaluations demonstrate sub-50ms game state updates, zero-cost player verification on EVM testnets, and complete statistical integrity across extensive Monte Carlo distributions ($N = 10,000$).
+
+\vspace{0.5cm}
+\noindent\textbf{Keywords:} Web3, Blockchain, Ethereum, MetaMask, Provably Fair, HMAC-SHA256, Smart Contracts, Solidity, EIP-712, SIWE, Three.js, Non-Custodial Vault.
+
+\newpage
+
+\section{Introduction and Problem Statement}
+
+\subsection{Background and Context}
+The convergence of decentralized ledger technology, automated smart contracts, and high-performance WebGL graphics has created unprecedented opportunities for disintermediating traditional internet casinos. Conventional web casinos rely on proprietary Random Number Generators (RNG) hosted on private cloud servers. Under this paradigm:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Opaque Randomness:} Players must place unverified blind trust in server-side algorithms that can alter win probabilities on-the-fly based on player betting patterns.
+    \item \textbf{Custodial Vulnerability:} Deposits are surrendered into centralized corporate bank accounts or private hot wallets, exposing players to insolvency, arbitrary account freezes, and exit scams.
+    \item \textbf{Intrusive Surveillance:} Conventional platforms demand invasive Know Your Customer (KYC) documentation, exposing user identities to identity theft and database leaks.
+\end{enumerate}
+
+\subsection{Problem Statement}
+Attempting to migrate gaming logic entirely on-chain onto blockchains like Ethereum Mainnet introduces severe bottlenecks:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Execution Latency:} Ethereum block times ($\sim 12$ seconds) and block reorganization risks prevent the snappy, sub-second feedback required in fast-paced arcade games such as Dice and Crash.
+    \item \textbf{Prohibitive Gas Fees:} Invoking smart contracts for every dice roll or multiplier tick creates crippling micro-transaction overheads exceeding the bet value itself.
+    \item \textbf{Deterministic Vulnerabilities:} On-chain block variables (e.g., \texttt{block.timestamp}, \texttt{block.prevrandao}) can be anticipated or manipulated by miner/validator front-running (Maximal Extractable Value - MEV).
+\end{itemize}
+
+Hence, the core engineering challenge addressed by this project is: \textit{How can a decentralized gaming platform achieve interactive sub-50 millisecond frame rates while simultaneously preserving mathematical provable fairness and non-custodial smart contract fund security?}
+
+\subsection{Project Objectives}
+The specific technical objectives of the CypherRoll project comprise:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Architectural Hybridization:} Design and construct a 3-tier architecture isolating real-time game physics and deterministic state generation off-chain while anchoring custody and settlement on-chain.
+    \item \textbf{Cryptographic Provable Fairness:} Implement an open, mathematically auditable HMAC-SHA256 commit-reveal engine guaranteeing that neither the casino nor the player can retroactively manipulate game outcomes.
+    \item \textbf{Non-Custodial Escrow Vault:} Develop, test, and deploy a secure Solidity smart contract (\texttt{CypherRollVault.sol}) supporting native ETH and ERC-20 tokens with EIP-712 cryptographic signature payouts.
+    \item \textbf{Zero-KYC Authentication:} Integrate Sign-In with Ethereum (SIWE / EIP-4361) enabling seamless, gas-free cryptographically verified user sessions via MetaMask.
+    \item \textbf{Testnet Integration and Zero-Cost Auditability:} Provide full compatibility with Ethereum testnets (Sepolia and Base Sepolia) enabling risk-free student, developer, and institutional auditability.
+    \item \textbf{High-Fidelity 3D WebGL Frontend:} Deliver hardware-accelerated 3D graphics rendered with Three.js and custom GLSL materials running smoothly across modern desktop and mobile browsers.
+\end{itemize}

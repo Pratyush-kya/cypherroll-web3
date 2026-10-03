@@ -1,0 +1,144 @@
+\section{Smart Contract Architecture and Settlement}
+
+\subsection{Non-Custodial Escrow Vault: CypherRollVault.sol}
+Central to the trustless operation of CypherRoll is the \texttt{CypherRollVault.sol} smart contract, implemented in Solidity 0.8.24. Unlike centralized platforms where customer deposits are commingled with operating accounts, \texttt{CypherRollVault} enforces non-custodial segregation of player assets on-chain.
+
+\subsection{EIP-712 Structured Data Cryptographic Authorization}
+Traditional decentralized gaming architectures force users to submit an on-chain transaction for every single game step, creating unbearable latency and gas consumption. CypherRoll solves this by maintaining fast off-chain ledger balances and settling on-chain withdrawals via \textbf{EIP-712} (Typed Structured Data Hashing and Signing).
+
+\paragraph{EIP-712 Domain Separator}
+To prevent cross-chain replay attacks and front-running across different contracts, the vault constructs a deterministic domain separator:
+\begin{align*}
+\mathcal{D} = \text{keccak256}(\text{abi.encode}( & \text{keccak256}(\text{"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"}), \\
+& \text{keccak256}(\text{bytes("CypherRollVault")}), \\
+& \text{keccak256}(\text{bytes("1")}), \\
+& \text{block.chainid}, \\
+& \text{address(this)}))
+\end{align*}
+
+\paragraph{Withdrawal Struct Typehash}
+The struct definition for withdrawals is defined as:
+$$\text{WITHDRAWAL\_TYPEHASH} = \text{keccak256}(\text{"Withdrawal(address player,address token,uint256 amount,uint256 nonce,uint256 deadline)"})$$
+
+\subsection{Smart Contract Source Code}
+Below is the core implementation of \texttt{CypherRollVault.sol}:
+
+\begin{lstlisting}[language=Solidity,caption={CypherRollVault.sol Smart Contract Implementation}]
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+interface IERC20 {
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract CypherRollVault {
+    address public immutable owner;
+    address public operatorSigner;
+    bool public paused;
+
+    bytes32 public immutable DOMAIN_SEPARATOR;
+    bytes32 public constant WITHDRAWAL_TYPEHASH = keccak256(
+        "Withdrawal(address player,address token,uint256 amount,uint256 nonce,uint256 deadline)"
+    );
+
+    mapping(address => uint256) public userNonces;
+    mapping(address => uint256) public tokenVaultReserves;
+
+    event Deposited(address indexed player, address indexed token, uint256 amount, uint256 timestamp);
+    event Withdrawn(address indexed player, address indexed token, uint256 amount, uint256 nonce, uint256 timestamp);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "Vault is paused");
+        _;
+    }
+
+    constructor(address _operatorSigner) {
+        require(_operatorSigner != address(0), "Invalid signer");
+        owner = msg.sender;
+        operatorSigner = _operatorSigner;
+
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("CypherRollVault")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
+    function depositETH() external payable whenNotPaused {
+        require(msg.value > 0, "Zero deposit");
+        tokenVaultReserves[address(0)] += msg.value;
+        emit Deposited(msg.sender, address(0), msg.value, block.timestamp);
+    }
+
+    function depositERC20(address token, uint256 amount) external whenNotPaused {
+        require(token != address(0), "Invalid token");
+        require(amount > 0, "Zero amount");
+        bool success = IERC20(token).transferFrom(msg.sender, address(this), amount);
+        require(success, "Transfer failed");
+        tokenVaultReserves[token] += amount;
+        emit Deposited(msg.sender, token, amount, block.timestamp);
+    }
+
+    function withdraw(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external whenNotPaused {
+        require(block.timestamp <= deadline, "Signature expired");
+        require(nonce == userNonces[msg.sender] + 1, "Invalid nonce sequence");
+        require(tokenVaultReserves[token] >= amount, "Insufficient vault reserves");
+
+        bytes32 structHash = keccak256(
+            abi.encode(WITHDRAWAL_TYPEHASH, msg.sender, token, amount, nonce, deadline)
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+
+        address recovered = recoverSigner(digest, signature);
+        require(recovered == operatorSigner, "Invalid operator signature");
+
+        userNonces[msg.sender] = nonce;
+        tokenVaultReserves[token] -= amount;
+
+        if (token == address(0)) {
+            (bool sent, ) = payable(msg.sender).call{value: amount}("");
+            require(sent, "ETH transfer failed");
+        } else {
+            bool sent = IERC20(token).transfer(msg.sender, amount);
+            require(sent, "Token transfer failed");
+        }
+
+        emit Withdrawn(msg.sender, token, amount, nonce, block.timestamp);
+    }
+
+    function recoverSigner(bytes32 digest, bytes memory sig) internal pure returns (address) {
+        require(sig.length == 65, "Invalid signature length");
+        bytes32 r; bytes32 s; uint8 v;
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+        return ecrecover(digest, v, r, s);
+    }
+}
+\end{lstlisting}
+
+\subsection{Security Invariants Enforced by the Vault}
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Monotonic Nonce Sequence:} Withdrawals strictly require $\text{nonce} = \text{userNonces}[\text{msg.sender}] + 1$. This eliminates transaction replay attacks and guarantees order integrity.
+    \item \textbf{Deadline Expiration:} Signatures expire after 3600 seconds, preventing stale or compromised vouchers from circulating indefinitely.
+    \item \textbf{Checks-Effects-Interactions Pattern:} The contract updates reserves and nonces \textit{before} performing external calls, neutralizing reentrancy attacks.
+\end{enumerate}

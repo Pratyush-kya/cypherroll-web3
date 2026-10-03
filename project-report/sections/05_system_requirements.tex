@@ -1,0 +1,67 @@
+\newpage
+\noindent{\Large \textbf{CHAPTER 5}}\par
+\vspace{0.2cm}
+\noindent{\Large \textbf{SYSTEM REQUIREMENTS}}\par
+\vspace{0.4cm}
+
+\subsection*{5.1 Introduction}
+System requirements define the essential hardware, software, and operational conditions necessary for the successful design, implementation, deployment, and testing of the CypherRoll platform. These requirements ensure that the system executes efficiently, maintains data integrity and cryptographic security, and delivers a responsive, lag-free user experience. The requirements are categorized into hardware, software, functional, and non-functional specifications.
+
+\subsection*{5.2 Hardware Requirements}
+The CypherRoll system is a web-based decentralized application built on modern web standards, and therefore it does not require specialized server hardware for end users. The minimum and recommended hardware specifications comprise:
+
+\paragraph{Client-Side Hardware Requirements:}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Processor:} Dual-core Intel Core i3 / AMD Ryzen 3 or higher (ARM-based Apple M1/M2/M3 fully supported).
+    \item \textbf{Memory (RAM):} Minimum 4 GB of system RAM (8 GB recommended for optimal 60 FPS 3D WebGL rendering).
+    \item \textbf{Graphics Card (GPU):} Integrated graphics (Intel UHD / Iris Xe / AMD Radeon Vega) or dedicated GPU supporting WebGL 2.0 and hardware-accelerated canvas compositing.
+    \item \textbf{Storage:} At least 1 GB of available disk space for browser caches, local state, and Web3 extension storage.
+    \item \textbf{Network Connectivity:} Stable internet broadband connection (minimum 2 Mbps) for real-time WebSocket communication and JSON-RPC node calls.
+\end{itemize}
+
+\paragraph{Development and Server-Side Hardware Requirements:}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Processor:} Quad-core 2.4 GHz 64-bit x86/ARM processor.
+    \item \textbf{Memory (RAM):} Minimum 8 GB RAM (16 GB recommended for running concurrent Next.js dev servers, Blender asset pipelines, and local testnet nodes).
+    \item \textbf{Storage:} Minimum 20 GB of free solid-state storage (SSD) for dependencies, compiled build artifacts, and database ledgers.
+\end{itemize}
+
+\subsection*{5.3 Software Requirements}
+The software requirements encompass all programming environments, operating systems, frameworks, and developer toolkits utilized in building and operating CypherRoll:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Operating System:} Compatible across Windows 10/11 64-bit, macOS 12+ (Monterey, Ventura, Sonoma), and Ubuntu Linux 20.04+ LTS.
+    \item \textbf{Runtime Environment:} Node.js version 18.x or 20.x LTS alongside the npm package manager.
+    \item \textbf{Frontend Framework:} Next.js 14 (App Router) with React 18, TypeScript 5.4, and Tailwind CSS 3.4.
+    \item \textbf{3D Graphics Library:} Three.js (v0.164.1) with Draco mesh decompression libraries.
+    \item \textbf{Web3 and Blockchain Libraries:} Wagmi (v2.8.6), Viem (v2.10.8), RainbowKit (v2.1.2), and Solana Web3.js (v1.91.8).
+    \item \textbf{Smart Contract Development:} Solidity compiler (pragma \texttt{\^{}0.8.24}) with Remix IDE / Hardhat / Foundry for contract compilation and testing.
+    \item \textbf{Database and Storage:} Supabase PostgreSQL 16 with Row-Level Security (RLS) and real-time WebSocket Pub/Sub subscriptions.
+    \item \textbf{Web Browser and Wallet Extension:} Modern Chromium-based browser (Google Chrome, Brave, Microsoft Edge, Firefox) equipped with the MetaMask Web3 wallet extension.
+\end{itemize}
+
+\subsection*{5.4 Functional Requirements}
+Functional requirements specify the direct capabilities, workflows, and operations the CypherRoll system must execute:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Wallet Authentication:} The system must permit users to connect their MetaMask or Phantom wallet and authenticate using cryptographic message signing (SIWE - EIP-4361) without passwords or gas fees.
+    \item \textbf{Interactive 3D Game Environments:} The system must render interactive 3D WebGL game environments for CypherDice and CypherCrash with physical dice rolling and rocket flight synchronized with game state.
+    \item \textbf{Provably Fair Outcome Generation:} The system must generate game results using HMAC-SHA256 based on the pre-committed server seed, user client seed, and sequential nonce, enabling independent post-game verification.
+    \item \textbf{Vault Deposit Management:} The system must provide multi-network deposit addresses (Base, Arbitrum, Solana) and allow players to submit transaction hashes for on-chain receipt verification and balance crediting.
+    \item \textbf{EIP-712 Withdrawal Authorization:} The system must process player withdrawal requests and emit cryptographically signed EIP-712 vouchers for autonomous on-chain redemption against \texttt{CypherRollVault.sol}.
+    \item \textbf{Seed Rotation and Inspection:} Players must be able to view their active server seed hash, generate new client seeds, and rotate their seed pair to reveal historical server seeds for auditability.
+    \item \textbf{Live Telemetry and Bet Tickers:} The system must display an infinite real-time marquee tracking live bets, multipliers, and payouts across all active platform games.
+\end{enumerate}
+
+\subsection*{5.5 Non-Functional Requirements}
+Non-functional requirements define the quality attributes, performance criteria, and security benchmarks of the platform:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{High Security:} The system must protect against reentrancy attacks, replay nonces, front-running, and double-crediting. All SQL balance updates must execute under strict ACID row-level locking.
+    \item \textbf{Low Latency and High Responsiveness:} The backend game outcome calculation must complete in $< 1.0\text{ms}$. The 3D WebGL render loop must sustain a steady 60 frames per second ($16.6\text{ms}$ frame time).
+    \item \textbf{Scalability:} The stateless Next.js API architecture must support concurrent user scaling, handling horizontal worker distribution behind reverse proxies.
+    \item \textbf{Reliability and Solvency:} The system must enforce dynamic Kelly Criterion bet capping ($\le 1\%$ vault reserves) to ensure mathematical platform solvency at all times.
+    \item \textbf{Usability and Accessibility:} The interface must offer an intuitive, responsive OLED cyberpunk design with clear error feedback and full cross-browser compatibility.
+\end{itemize}
+
+\subsection*{5.6 Conclusion of the Chapter}
+This chapter outlined the comprehensive hardware, software, functional, and non-functional requirements necessary for developing and operating the CypherRoll platform. These criteria provide the technical baseline for constructing a secure, robust, and high-performance Web3 gaming system.
+
+The next chapter will delve into the system design, detailing the architectural decomposition, component diagrams, data flows, database schemas, and security measures.
