@@ -67,17 +67,17 @@
     \renewcommand{\footrulewidth}{0pt}
 }
 
-% --- Chapter Body Style (Left-aligned 'X | Page') ---
+% --- Chapter Body Style (Centered 'X | Page') ---
 \fancypagestyle{mainstyle}{
     \fancyhf{}
-    \fancyfoot[L]{\normalsize\thepage\,$|$\,Page}
+    \fancyfoot[C]{\normalsize\thepage\,$|$\,Page}
     \renewcommand{\headrulewidth}{0pt}
     \renewcommand{\footrulewidth}{0pt}
 }
 
 \fancypagestyle{plain}{
     \fancyhf{}
-    \fancyfoot[L]{\normalsize\thepage\,$|$\,Page}
+    \fancyfoot[C]{\normalsize\thepage\,$|$\,Page}
     \renewcommand{\headrulewidth}{0pt}
     \renewcommand{\footrulewidth}{0pt}
 }
@@ -91,36 +91,47 @@
 \input{sections/00_frontmatter.tex}
 
 % 01. Chapter 1: Introduction
+\clearpage
 \input{sections/01_introduction.tex}
 
 % 02. Chapter 2: Objectives of the Project
+\clearpage
 \input{sections/02_objectives.tex}
 
 % 03. Chapter 3: Existing System
+\clearpage
 \input{sections/03_existing_system.tex}
 
 % 04. Chapter 4: Proposed System
+\clearpage
 \input{sections/04_proposed_system.tex}
 
 % 05. Chapter 5: System Requirements
+\clearpage
 \input{sections/05_system_requirements.tex}
 
 % 06. Chapter 6: System Design
+\clearpage
 \input{sections/06_system_design.tex}
 
 % 07. Chapter 7: Module Description
+\clearpage
 \input{sections/07_module_description.tex}
 
 % 08. Chapter 8: Implementation Details
+\clearpage
 \input{sections/08_implementation_details.tex}
 
 % 09. Chapter 9: Testing and Results
+\clearpage
 \input{sections/09_testing_results.tex}
 
 % 10. Chapter 10: Conclusion
+\clearpage
 \input{sections/10_conclusion.tex}
 
 % 11. Reference
+\clearpage
 \input{sections/11_reference.tex}
 
 \end{document}
