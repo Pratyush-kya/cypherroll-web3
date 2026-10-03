@@ -1,0 +1,43 @@
+\section{Security, AML Compliance, and Risk Controls}
+
+\subsection{Threat Model and Defense-in-Depth}
+Decentralized gambling platforms are high-value targets for Sybil attacks, malicious botnets, smart contract reentrancy exploits, and illicit money laundering. CypherRoll implements a robust defense-in-depth security model:
+
+\begin{figure}[h!]
+\centering
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,title=\textbf{Defense-in-Depth Pipeline}]
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Layer 1: Network \& DDoS Defense} $\rightarrow$ Client-side Proof-of-Work (PoW) dynamic challenge.
+    \item \textbf{Layer 2: Identity \& Session Defense} $\rightarrow$ SIWE EIP-4361 cryptographic nonce verification.
+    \item \textbf{Layer 3: Compliance \& Sanctions} $\rightarrow$ Automated OFAC Sanctions oracle \& AML risk scoring.
+    \item \textbf{Layer 4: Financial \& Vault Defense} $\rightarrow$ Multi-sig thresholds, Kelly Criterion caps, EIP-712 vouchers.
+    \item \textbf{Layer 5: Ledger Invariance} $\rightarrow$ Continuous real-time automated solvency watchdog.
+\end{itemize}
+\end{tcolorbox}
+\caption{Security Architecture Hierarchy}
+\end{figure}
+
+\subsection{Automated OFAC Sanctions Screening and AML Oracle}
+While preserving non-custodial gaming without intrusive KYC document collection, CypherRoll guards against sanctioned entity exploitation. When a wallet address initiates a deposit:
+\begin{enumerate}[leftmargin=1.5em]
+    \item The address is cross-referenced against known sanctioned address clusters (e.g., Tornado Cash mixers, Lazarus Group addresses, and OFAC lists).
+    \item If high-risk heuristic flags are identified (e.g., interaction with tainted tumbling protocols), the deposit is automatically transitioned to \texttt{QUARANTINE\_DEPOSIT} status.
+    \item The quarantined balance is frozen from game wagering, shielding the platform operator from regulatory liability while preserving an immutable cryptographic audit trail.
+\end{enumerate}
+
+\subsection{Client-Side Proof-of-Work (PoW) Rate Limiting}
+To deter automated spam bots from flooding API routes (such as dice rolls or chat trollbox broadcasts), CypherRoll deploys a Hashcash-style Proof-of-Work challenge.
+\begin{itemize}[leftmargin=1.5em]
+    \item The server issues a challenge string $\mathcal{C}$ and target difficulty $D = 4$.
+    \item The client browser must iterate a counter $x \in \mathbb{N}$ until finding:
+    $$\text{SHA-256}(\mathcal{C} \parallel x) = \underbrace{0000}_{D \text{ zeros}} \dots$$
+    \item Verification on the server takes $< 0.1\text{ms}$ (single hash check), while imposing a computational cost of several million operations on automated bot scripts, eliminating API exhaustion attacks.
+\end{itemize}
+
+\subsection{Tiered Treasury and Multi-Sig Governance}
+To guard against private key compromise, casino vault liquidity is stratified across three tiers:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Hot Vault ($\le 5\%$ of reserves):} Governed by the automated operator signer key for instant payouts $< \$2,500$ USDC.
+    \item \textbf{Warm Vault ($15\%$ of reserves):} Requires 2-of-3 multi-signature consensus for withdrawals between $\$2,500$ and $\$25,000$.
+    \item \textbf{Cold Storage ($80\%$ of reserves):} Fully air-gapped, multi-sig vault (3-of-5) requiring physical hardware keys for treasury rebalancing.
+\end{itemize}

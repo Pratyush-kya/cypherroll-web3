@@ -1,0 +1,75 @@
+\section{Mathematical Foundations of Provable Fairness}
+
+\subsection{The Provably Fair Paradigm}
+The foundational premise of provable fairness is to guarantee that the outcome of any wager is mathematically predetermined prior to the placement of a bet, while remaining completely unpredictable to both the operator and the player. This is achieved through a \textbf{Commit-Reveal Cryptographic Protocol} incorporating asymmetric entropy from both parties.
+
+\begin{figure}[h!]
+\centering
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,title=\textbf{Protocol 3.1: The Cryptographic Commit-Reveal Handshake}]
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Phase 1 (Commitment):} The server generates a 256-bit secret random string, termed the \textit{Server Seed} ($S_{\text{srv}}$). Before the player wagers, the server computes and publishes its cryptographic digest:
+    $$H_{\text{srv}} = \text{SHA-256}(S_{\text{srv}})$$
+    Because SHA-256 is computationally preimage-resistant, the player cannot discern $S_{\text{srv}}$, yet the casino is irrevocably committed to it.
+    \item \textbf{Phase 2 (Player Entropy):} The player supplies an arbitrary string known as the \textit{Client Seed} ($S_{\text{cli}}$), or relies on a cryptographically generated client string from their Web3 wallet.
+    \item \textbf{Phase 3 (Monotonic Nonce):} A sequential integer counter ($N \in \mathbb{N}$) increments with each consecutive bet, ensuring unique outputs across repeated plays.
+    \item \textbf{Phase 4 (Outcome Generation):} The raw entropy digest is computed using Hash-based Message Authentication Codes:
+    $$\mathcal{H} = \text{HMAC-SHA256}(K = S_{\text{srv}}, \; M = S_{\text{cli}} \parallel \text{':'} \parallel N)$$
+    \item \textbf{Phase 5 (Reveal \& Independent Audit):} Upon rotating the active seed pair, the server reveals the plaintext $S_{\text{srv}}$. Any player or third-party auditor can recompute $H_{\text{srv}}$ and $\mathcal{H}$ to prove no outcome was manipulated.
+\end{enumerate}
+\end{tcolorbox}
+\caption{Commit-Reveal Workflow in CypherRoll}
+\end{figure}
+
+\subsection{CypherDice Mathematical Mechanics}
+To generate a uniform random decimal roll $R \in [0.00, 99.99]$:
+\begin{enumerate}[leftmargin=1.5em]
+    \item Compute $\mathcal{H} = \text{HMAC-SHA256}(S_{\text{srv}}, S_{\text{cli}} : N)$.
+    \item Extract the leading 8 hexadecimal characters (32 bits of entropy):
+    $$h_{32} = \mathcal{H}[0..8] \in [0, 2^{32} - 1]$$
+    \item Convert to an unsigned 32-bit integer $I = \text{hex2int}(h_{32})$.
+    \item Compute the final roll with two decimal digits of precision via modulo scaling:
+    $$R = \frac{I \pmod{10000}}{100}$$
+\end{enumerate}
+
+\paragraph{Payout Multiplier Formula \& House Edge}
+For a player wagering on ``Roll Under $T$'' where $T \in [1.00, 95.00]$, the winning probability is:
+$$P(\text{Win}) = \frac{T}{100}$$
+Incorporating a configured mathematical house edge $E_{\text{house}} = 0.04$ (4.0\% house edge, corresponding to 96.0\% Return-to-Player - RTP), the theoretical payout multiplier $M(T)$ is computed with strict floor truncation:
+$$M(T) = \left\lfloor \frac{1 - E_{\text{house}}}{P(\text{Win})} \times 10^4 \right\rfloor \times 10^{-4} = \left\lfloor \frac{0.96 \times 100}{T} \times 10^4 \right\rfloor \times 10^{-4}$$
+
+\subsection{CypherCrash Mathematical Mechanics}
+The CypherCrash game implements the industry-standard exponential crash curve with a mathematically proven house edge.
+\begin{enumerate}[leftmargin=1.5em]
+    \item From the HMAC hex digest $\mathcal{H}$, extract the leading 13 hexadecimal characters (52 bits of entropy):
+    $$h_{52} = \mathcal{H}[0..13] \in [0, 2^{52} - 1]$$
+    \item Set $e = 2^{52} = 4,503,599,627,370,496$.
+    \item Apply the continuous crash distribution function with a 3\% house edge ($E_{\text{crash}} = 0.03$):
+    $$C_{\text{raw}} = \frac{(1 - E_{\text{crash}}) \times e}{e - h_{52}} = \frac{0.97 \times e}{e - h_{52}}$$
+    \item If $C_{\text{raw}} < 1.00$, the round suffers an \textit{instant crash} ($C = 1.00\times$). This occurs with probability:
+    $$P(\text{Instant Crash}) = \frac{0.03 \times e}{e} = 3.0\%$$
+    \item For $C_{\text{raw}} \ge 1.00$, the crash multiplier is truncated to two decimal places:
+    $$C = \frac{\lfloor C_{\text{raw}} \times 100 \rfloor}{100}$$
+\end{enumerate}
+
+\begin{lstlisting}[language=Solidity,caption={TypeScript Implementation of Provably Fair Calculation}]
+// Core provably fair hashing implementation in lib/provably-fair.ts
+export function calculateDiceRoll(serverSeed: string, clientSeed: string, nonce: number): number {
+    const hex = computeHMAC(serverSeed, clientSeed, nonce);
+    const subHash = hex.substring(0, 8);
+    const intVal = parseInt(subHash, 16);
+    return parseFloat(((intVal % 10000) / 100).toFixed(2));
+}
+
+export function calculateCrashPoint(serverSeed: string, clientSeed: string, nonce: number): number {
+    const hex = computeHMAC(serverSeed, clientSeed, nonce);
+    const h = parseInt(hex.substring(0, 13), 16);
+    const e = Math.pow(2, 52);
+    const rawCrash = (0.97 * e) / (e - h);
+    return rawCrash < 1.00 ? 1.00 : parseFloat((Math.floor(rawCrash * 100) / 100).toFixed(2));
+}
+\end{lstlisting}
+
+\subsection{Bankroll Risk Management: Kelly Criterion Cap}
+To prevent casino insolvency from high-multiplier anomalous winning streaks, CypherRoll institutes dynamic bet capping governed by the \textbf{Kelly Criterion}. The maximum permissible player profit for any single wager is restricted to:
+$$\text{Max Profit} \le \text{Total Vault Reserves} \times 0.01$$
+This dynamic ceiling guarantees that the casino's risk of ruin approaches asymptotic zero even during prolonged statistical outlier runs.

@@ -1,0 +1,116 @@
+% Certificate Page (Page II)
+\newpage
+\pagenumbering{Roman}
+\setcounter{page}{2}
+\pagestyle{frontmatterstyle}
+\thispagestyle{frontmatterstyle}
+\begin{center}
+    {\large \textbf{CENTURION UNIVERSITY OF TECHNOLOGY AND MANAGEMENT ODISHA}\par}
+    \vspace{0.15cm}
+    {\normalsize \textbf{School of Engineering and Technology, Bhubaneswar Campus}\par}
+    \vspace{0.8cm}
+    {\Large \textbf{BONAFIDE CERTIFICATE}\par}
+    \vspace{0.8cm}
+\end{center}
+
+This is to certify that the project report entitled \textbf{``CypherRoll: A Provably Fair Web3 Crypto Casino with Hybrid Off-Chain Execution and Non-Custodial On-Chain Settlement''} submitted by \textbf{PRATYUSH KIRAN RATH} (Regd. No.: \textbf{250301120001}) in partial fulfillment of the requirements for the award of the degree of \textbf{Bachelor of Technology in Computer Science and Engineering} is a bonafide record of work carried out under proper academic guidance and supervision.
+
+\vspace{3.5cm}
+
+\noindent
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}cc}
+    \rule{5.5cm}{0.4pt} & \rule{5.5cm}{0.4pt} \\
+    \textbf{Project Supervisor} & \textbf{Head of the Department} \\
+    Department of CSE & Department of CSE \\
+    Centurion University, Odisha & Centurion University, Odisha
+\end{tabular*}
+
+% Declaration & Acknowledgement (Page III)
+\newpage
+\pagestyle{frontmatterstyle}
+\thispagestyle{frontmatterstyle}
+\begin{center}
+    {\Large \textbf{DECLARATION}\par}
+    \vspace{0.6cm}
+\end{center}
+
+I, \textbf{Pratyush Kiran Rath}, student of Bachelor of Technology in Computer Science and Engineering at Centurion University of Technology and Management, Odisha, hereby declare that the project entitled \textbf{``CypherRoll: A Provably Fair Web3 Crypto Casino with Hybrid Off-Chain Execution and Non-Custodial On-Chain Settlement''} represents original engineering and development work undertaken by me.
+
+All materials, smart contracts, cryptographic libraries, and technical specifications referenced throughout this work have been properly credited and documented.
+
+\vspace{1.5cm}
+\noindent
+\textbf{Pratyush Kiran Rath} \\
+Regd. No.: 250301120001 \\
+B.Tech (Computer Science \& Engineering) \\
+Centurion University of Technology and Management, Odisha
+
+\vspace{1.5cm}
+\begin{center}
+    {\Large \textbf{ACKNOWLEDGEMENT}\par}
+    \vspace{0.4cm}
+\end{center}
+I express my deepest gratitude to the faculty and management of Centurion University of Technology and Management for providing the infrastructure and guidance necessary to realize this project. I am also thankful to the open-source Web3 and Ethereum communities whose tools, standards, and frameworks made this work possible.
+
+% Abstract (Page IV)
+\newpage
+\pagestyle{frontmatterstyle}
+\thispagestyle{frontmatterstyle}
+\begin{center}
+    {\Large \textbf{ABSTRACT}\par}
+    \vspace{0.8cm}
+\end{center}
+
+Online gaming and iGaming platforms constitute a multi-billion dollar global sector, yet legacy centralized platforms suffer from acute transparency deficits, commonly termed ``black-box algorithms''. Players have no cryptographic guarantees that game results are unmanipulated, nor do they retain custody of deposited funds. In contrast, fully on-chain gaming models implemented on Layer-1 blockchains suffer from prohibitively high transaction gas costs and multi-second block latency, rendering real-time interactive gameplay impossible.
+
+CypherRoll is a blockchain-based platform designed to address these challenges by introducing a secure, transparent, and provably fair hybrid Web3 gaming ecosystem. The system combines high-performance off-chain game execution with non-custodial on-chain settlement. A native Three.js 3D WebGL engine delivers hardware-accelerated 60 FPS graphics for interactive games including CypherDice and CypherCrash. Cryptographic fairness is guaranteed through an HMAC-SHA256 commit-reveal protocol with pre-committed server seeds, user-chosen client seeds, and monotonically increasing nonces.
+
+The platform utilizes modern web technologies for the frontend, a Node.js-based backend for processing and validation, and Ethereum smart contracts for non-custodial treasury management and fund settlements. Financial transactions are secured via a custom Solidity escrow vault (\texttt{CypherRollVault.sol}) deployed across EVM networks (Ethereum Sepolia, Base Sepolia, Arbitrum). Player onboarding is zero-KYC and gas-free using Sign-In with Ethereum (SIWE - EIP-4361), while withdrawals are executed via EIP-712 typed structured signatures authorized by the casino operator.
+
+Key features of the system include real-time provable fairness verification, hardware-accelerated 3D WebGL physics, dual-chain wallet integration (MetaMask on EVM and Phantom on Solana), automated AML/OFAC sanctions screening, and dynamic bankroll safety controls governed by the Kelly Criterion.
+
+The CypherRoll system provides a decentralized and tamper-proof solution that transforms online gaming into an authentic, auditable, and self-custodial experience. The project demonstrates the practical application of blockchain technology in the gaming and financial entertainment sector and offers a scalable foundation for future advancements.
+
+\vspace{0.8cm}
+\noindent\textbf{Keywords:} Blockchain, Web3, MetaMask, Smart Contracts, Provably Fair, HMAC-SHA256, Solidity, EIP-712, SIWE, Three.js, Ethereum, Base Sepolia.
+
+% Table of Contents (Page V)
+\newpage
+\pagestyle{frontmatterstyle}
+\thispagestyle{frontmatterstyle}
+\begin{center}
+    {\Large \textbf{TABLE OF CONTENTS}\par}
+    \vspace{0.8cm}
+\end{center}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{|>{\centering\arraybackslash}m{2.8cm}|>{\centering\arraybackslash}m{7.8cm}|>{\centering\arraybackslash}m{2.8cm}|}
+\hline
+\textbf{Chapter No.} & \textbf{Chapters} & \textbf{Page No} \\
+\hline
+\textbf{1} & \textbf{Introduction} & \textbf{01--03} \\
+\hline
+\textbf{2} & \textbf{Objectives of the Project} & \textbf{03--05} \\
+\hline
+\textbf{3} & \textbf{Existing System} & \textbf{05--08} \\
+\hline
+\textbf{4} & \textbf{Proposed System} & \textbf{08--11} \\
+\hline
+\textbf{5} & \textbf{System Requirements} & \textbf{11--14} \\
+\hline
+\textbf{6} & \textbf{System Design} & \textbf{14--17} \\
+\hline
+\textbf{7} & \textbf{Module Description} & \textbf{17--19} \\
+\hline
+\textbf{8} & \textbf{Implementation Details} & \textbf{19--22} \\
+\hline
+\textbf{9} & \textbf{Testing and Results} & \textbf{22--25} \\
+\hline
+\textbf{10} & \textbf{Conclusion} & \textbf{25--27} \\
+\hline
+ & \textbf{Reference} & \textbf{27--28} \\
+\hline
+\end{tabular}
+\end{center}
+\newpage

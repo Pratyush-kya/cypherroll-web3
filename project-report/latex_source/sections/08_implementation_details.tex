@@ -1,0 +1,86 @@
+\vspace{0.8cm}
+\begin{center}
+\textbf{CHAPTER 8}\\[0.15cm]
+\textbf{IMPLEMENTATION DETAILS}
+\end{center}
+\label{chap:implementation}
+\vspace{0.2cm}
+
+\subsection*{8.1 Introduction}
+The implementation phase of the CypherRoll project involves translating architectural designs, mathematical algorithms, and smart contract specifications into an integrated, production-ready decentralized application. This chapter details the development environment, code structures, libraries, and engineering methodologies employed across the frontend, backend, database, and blockchain layers.
+
+\subsection*{8.2 Development Environment}
+The engineering of CypherRoll was carried out using a modern, type-safe development environment:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Package Management \& Runtime:} Node.js v20 LTS and npm for dependency resolution.
+    \item \textbf{Type System:} TypeScript 5.4 in strict mode, ensuring static type checking across all Web3 hooks, API payloads, and database queries.
+    \item \textbf{Smart Contract Tooling:} Solidity compiler (\texttt{solc 0.8.24}) with Remix IDE and Viem test harnesses for bytecode verification and contract interaction.
+    \item \textbf{Version Control:} Git for distributed source code versioning and collaborative code maintenance.
+\end{itemize}
+
+\subsection*{8.3 Frontend Implementation}
+The frontend interface is implemented with Next.js 14 using the App Router and Tailwind CSS:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Web3 Provider Setup (\texttt{Web3Providers.tsx}):} Configures Wagmi v2 with injected MetaMask connectors and public RPC transports for Base Sepolia, Ethereum Sepolia, Base Mainnet, and Arbitrum. It also wraps RainbowKit with custom dark-themed styling.
+    \item \textbf{3D WebGL Implementation:} Native Three.js canvases are mounted using standard React component lifecycles. 3D dice meshes with metallic/roughness PBR textures are loaded with Draco mesh decompression. Linear interpolation (\texttt{lerp}) algorithms drive the dice rotations to settle smoothly onto the exact roll determined by the provably fair engine.
+    \item \textbf{State Management \& HUD:} Custom React hooks manage active tab state, modal visibility, balance changes, and live bet feeds.
+\end{itemize}
+
+\subsection*{8.4 Backend Implementation}
+The backend logic is implemented in Next.js Serverless Route Handlers and modular utility services:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{SIWE Verification (\texttt{/api/auth/verify}):} Leverages Viem's \texttt{verifyMessage} function to recover the public signer from EIP-4361 challenge messages, verifying address authenticity and issuing secure session cookies.
+    \item \textbf{Provably Fair Engine (\texttt{lib/provably-fair.ts}):} Implements cryptographic functions:
+\begin{lstlisting}[language=Solidity,caption={Provably Fair Implementation in lib/provably-fair.ts}]
+export function calculateDiceRoll(serverSeed: string, clientSeed: string, nonce: number): number {
+  const hex = computeHMAC(serverSeed, clientSeed, nonce);
+  const subHash = hex.substring(0, 8);
+  const intVal = parseInt(subHash, 16);
+  return parseFloat(((intVal % 10000) / 100).toFixed(2));
+}
+
+export function calculateCrashPoint(serverSeed: string, clientSeed: string, nonce: number): number {
+  const hex = computeHMAC(serverSeed, clientSeed, nonce);
+  const h = parseInt(hex.substring(0, 13), 16);
+  const e = Math.pow(2, 52);
+  const rawCrash = (0.97 * e) / (e - h);
+  return rawCrash < 1.00 ? 1.00 : parseFloat((Math.floor(rawCrash * 100) / 100).toFixed(2));
+}
+\end{lstlisting}
+\end{itemize}
+
+\subsection*{8.5 Smart Contract Implementation}
+The \texttt{CypherRollVault.sol} contract was authored in Solidity 0.8.24. It utilizes EIP-712 structured data hashing to verify operator signatures:
+\begin{lstlisting}[language=Solidity,caption={EIP-712 Withdrawal Verification in CypherRollVault.sol}]
+bytes32 structHash = keccak256(
+    abi.encode(WITHDRAWAL_TYPEHASH, msg.sender, token, amount, nonce, deadline)
+);
+bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+address recovered = recoverSigner(digest, signature);
+require(recovered == operatorSigner, "Invalid operator signature");
+\end{lstlisting}
+
+\subsection*{8.6 Database Implementation}
+The financial state is persisted within Supabase PostgreSQL 16. Balance updates execute within atomic database transactions with row-level locks (\texttt{SELECT ... FOR UPDATE}), completely preventing double-spending race conditions.
+
+\subsection*{8.7 Integration with External Services}
+The system connects to several external Web3 and infrastructure services:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{MetaMask Wallet:} Interfaces via \texttt{window.ethereum} for wallet connection, chain switching, and EIP-712 transaction execution.
+    \item \textbf{EVM RPC Nodes:} Connects to Base Sepolia (\url{https://sepolia.base.org}) and Ethereum Sepolia (\url{https://rpc.sepolia.org}) via Viem public clients to inspect transaction receipts.
+    \item \textbf{Discord Webhook Alerts:} Emits real-time administrative telemetry notifications for player support requests.
+\end{itemize}
+
+\subsection*{8.8 Challenges Faced During Implementation}
+Several significant engineering challenges were resolved during development:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Cryptographic EIP-712 Alignment:} Ensuring the domain separator and type hashes computed in TypeScript via Viem matched the exact byte-level hashing of Solidity on-chain.
+    \item \textbf{Preventing Double-Crediting:} Designing an idempotent deposit verification pipeline that tracks unique transaction hashes across database tables and RPC states.
+    \item \textbf{3D WebGL Performance:} Optimizing Three.js polygon counts and texture memory via Draco compression to sustain 60 FPS performance across lower-end devices.
+\end{itemize}
+
+\subsection*{8.9 Conclusion of the Chapter}
+This chapter detailed the complete implementation lifecycle of the CypherRoll system, including software frameworks, smart contract functions, provably fair algorithms, and third-party Web3 integrations.
+
+The next chapter will present the testing methodologies, security audits, and experimental verification results.
+\label{chap:implementation_end}

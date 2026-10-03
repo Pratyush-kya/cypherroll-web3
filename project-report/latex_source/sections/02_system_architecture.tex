@@ -1,0 +1,85 @@
+\section{System Architecture and Technical Design}
+
+\subsection{Architectural Paradigm: 3-Tier Hybridization}
+CypherRoll is architectured according to a state-of-the-art \textbf{3-Tier Hybrid Web3 Architecture}. By decoupling presentation, fast off-chain state computation, and durable on-chain settlement, the system achieves the responsiveness of centralized web gaming while maintaining the cryptographic guarantees of decentralized ledgers.
+
+\begin{figure}[h!]
+\centering
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,title=\textbf{Figure 2.1: CypherRoll 3-Tier Architecture High-Level Design}]
+\small
+\begin{verbatim}
++-------------------------------------------------------------------------+
+|                       TIER 1: PRESENTATION LAYER                        |
+|  * Next.js 14 App Router + React 18 + Tailwind CSS                      |
+|  * Hardware Accelerated 3D Engine: Three.js WebGL (CypherDice/Crash)    |
+|  * Multi-Chain Web3 Connectors: RainbowKit, Wagmi, Viem (EVM / MetaMask)|
+|  * Real-Time HUD: Provably Fair Seed Verifier & Cashier Escrow Modal    |
++------------------------------------+------------------------------------+
+                                     | HTTPS / WSS JSON-RPC
++------------------------------------v------------------------------------+
+|                   TIER 2: APPLICATION & LOGIC LAYER                     |
+|  * Cryptographic Engine: HMAC-SHA256 CSPRNG Provably Fair Pipeline      |
+|  * Nonce Challenge-Response: SIWE (EIP-4361) Signature Authenticator   |
+|  * Treasury Guard: Kelly Criterion Dynamic Bet Cap (<= 1% Total Vault)  |
+|  * EIP-712 Structured Withdrawal Signer (Cryptographic Operator Key)   |
+|  * Automated Sanctions & AML Risk Scoring Oracle                        |
++------------------+----------------------------------+-------------------+
+                   |                                  |
+                   v                                  v
++------------------+-----------------+  +-------------+-------------------+
+|  TIER 3A: PERSISTENCE & AUDIT      |  | TIER 3B: ON-CHAIN SETTLEMENT    |
+|  * Supabase (PostgreSQL 16 Engine) |  | * CypherRollVault.sol (Solidity)|
+|  * ACID Double-Entry Ledger        |  | * EVM Networks (Base, Sepolia)  |
+|  * Row-Level Locking (FOR UPDATE)  |  | * Non-Custodial Escrow Deposits |
+|  * Idempotent Tx Hash Registry     |  | * On-Chain Cryptographic Payouts|
++------------------------------------+  +---------------------------------+
+\end{verbatim}
+\end{tcolorbox}
+\caption{System Architecture of CypherRoll Web3 Platform}
+\end{figure}
+
+\subsection{Component Decomposition}
+
+\subsubsection{Tier 1: Presentation \& 3D Client Layer}
+The user interface is powered by Next.js 14 utilizing the React Server Components (RSC) and Client Components paradigm. Hardware acceleration is achieved through Three.js:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{CypherDice 3D Scene:} Features physical lerping of curved polyhedral dice meshes with baked metallic/roughness PBR textures, reacting to deterministic roll outcomes.
+    \item \textbf{CypherCrash 3D Flight Simulator:} Real-time particle thrusters, camera shake, and exponential flight curves synchronized with live game ticks.
+    \item \textbf{Web3 Provider Layer:} Encapsulated within \texttt{Web3Providers.tsx}, managing Wagmi, RainbowKit, and TanStack React Query clients to provide connection states for MetaMask and other Web3 extensions.
+\end{itemize}
+
+\subsubsection{Tier 2: Application, Fairness \& Logic Layer}
+Implemented within Next.js API Routes and Node.js cryptographic modules:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Authentication Guard:} Replaces vulnerable password authentication with EIP-4361 (SIWE). Challenge nonces are signed by the user's private key within MetaMask and verified using \texttt{viem/verifyMessage}.
+    \item \textbf{Provably Fair Computation Engine:} Generates cryptographic server seeds with 256-bit entropy via \texttt{crypto.randomBytes(32)}, yields SHA-256 pre-commitment hashes, and derives deterministic game outcomes.
+    \item \textbf{EIP-712 Withdrawal Signer:} Evaluates user payout requests against dynamic risk criteria and emits cryptographically signed withdrawal vouchers using the casino operator's private key.
+\end{itemize}
+
+\subsubsection{Tier 3: Persistence \& On-Chain Settlement Layer}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{PostgreSQL 16 ACID Ledger:} Hosted via Supabase, executing balance deductions and increments under strict transactional isolation. Row-level locks (\texttt{SELECT ... FOR UPDATE}) eliminate race conditions and double-spending attempts.
+    \item \textbf{Smart Contract Settlement Vault:} The Solidity escrow contract (\texttt{CypherRollVault.sol}) deployed on EVM networks holds treasury reserves and executes autonomous, non-custodial payouts upon verifying the valid EIP-712 operator signature.
+\end{itemize}
+
+\subsection{Tech Stack Matrix}
+
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{} l l X @{}}
+\toprule
+\textbf{Layer / Domain} & \textbf{Technology} & \textbf{Engineering Purpose} \\
+\midrule
+\textbf{Frontend Framework} & Next.js 14 (App Router) & Server-side rendering, API endpoints, optimal SEO, and bundle code-splitting \\
+\textbf{Styling \& UI} & Tailwind CSS, Framer Motion & Responsive OLED cyberpunk aesthetic, smooth spring transitions \\
+\textbf{3D Graphics Engine} & Three.js & Custom WebGL render loops, procedural particle shaders, GLTF/GLB models \\
+\textbf{Web3 EVM Client} & Wagmi 2.8, Viem 2.10 & Typed EVM interactions, MetaMask connector, EIP-712 typing \\
+\textbf{Wallet Modal UI} & RainbowKit 2.1 & Multi-wallet EVM onboarding dialog with QR and injected support \\
+\textbf{Smart Contracts} & Solidity 0.8.24 & Non-custodial escrow, EIP-712 signature verification, pause controls \\
+\textbf{Relational Database} & PostgreSQL 16 (Supabase) & Financial transaction logging, seed histories, atomic balances \\
+\textbf{Testing \& Simulation} & Node.js Crypto, Mocha & Monte Carlo provably fair statistical distribution verification ($N=10,000$) \\
+\bottomrule
+\end{tabularx}
+\caption{Comprehensive Technology Stack of CypherRoll}
+\end{table}

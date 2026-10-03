@@ -1,0 +1,95 @@
+\vspace{0.8cm}
+\begin{center}
+\textbf{CHAPTER 6}\\[0.15cm]
+\textbf{SYSTEM DESIGN}
+\end{center}
+\label{chap:design}
+\vspace{0.2cm}
+
+\subsection*{6.1 Introduction}
+System design defines how the CypherRoll platform is structured and how its constituent frontend, backend, database, and blockchain components interact to deliver seamless, tamper-proof gaming functionality. The system follows a modular, layered 3-tier hybrid architecture that synthesizes high-performance client rendering, off-chain provably fair outcome generation, and on-chain non-custodial smart contract settlement.
+
+\subsection*{6.2 Architecture Overview}
+The CypherRoll platform is built using a multi-layer architecture consisting of three primary tiers: the presentation layer, the application/logic layer, and the persistence and consensus settlement layer.
+
+\begin{figure}[h!]
+\centering
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,left=2mm,right=2mm,top=2mm,bottom=2mm,title=\textbf{Figure 6.1: CypherRoll 3-Tier Architecture High-Level Design}]
+\scriptsize
+\begin{verbatim}
++-------------------------------------------------------------------------+
+|                       TIER 1: PRESENTATION LAYER                        |
+|  * Next.js 14 App Router + React 18 + Tailwind CSS                      |
+|  * Hardware Accelerated 3D Engine: Three.js WebGL (CypherDice/Crash)    |
+|  * Multi-Chain Web3 Connectors: RainbowKit, Wagmi, Viem (EVM / MetaMask)|
+|  * Real-Time HUD: Provably Fair Seed Verifier & Cashier Escrow Modal    |
++------------------------------------+------------------------------------+
+                                     | HTTPS / WSS JSON-RPC
++------------------------------------v------------------------------------+
+|                   TIER 2: APPLICATION & LOGIC LAYER                     |
+|  * Cryptographic Engine: HMAC-SHA256 CSPRNG Provably Fair Pipeline      |
+|  * Nonce Challenge-Response: SIWE (EIP-4361) Signature Authenticator   |
+|  * Treasury Guard: Kelly Criterion Dynamic Bet Cap (<= 1% Total Vault)  |
+|  * EIP-712 Structured Withdrawal Signer (Cryptographic Operator Key)   |
+|  * Automated Sanctions & AML Risk Scoring Oracle                        |
++------------------+----------------------------------+-------------------+
+                   |                                  |
+                   v                                  v
++------------------+-----------------+  +-------------+-------------------+
+|  TIER 3A: PERSISTENCE & AUDIT      |  | TIER 3B: ON-CHAIN SETTLEMENT    |
+|  * Supabase (PostgreSQL 16 Engine) |  | * CypherRollVault.sol (Solidity)|
+|  * ACID Double-Entry Ledger        |  | * EVM Networks (Base, Sepolia)  |
+|  * Row-Level Locking (FOR UPDATE)  |  | * Non-Custodial Escrow Deposits |
+|  * Idempotent Tx Hash Registry     |  | * On-Chain Cryptographic Payouts|
++------------------------------------+  +---------------------------------+
+\end{verbatim}
+\end{tcolorbox}
+\caption{Architectural Blueprint of CypherRoll}
+\end{figure}
+
+The presentation layer is developed using Next.js 14, React, and Three.js. It allows users to connect their Web3 wallets, inspect provably fair seeds, configure wagers, and experience hardware-accelerated 3D WebGL animations.
+
+The application layer comprises Next.js API Routes and cryptographic Node.js modules. It handles SIWE authentication, verifies on-chain deposit transactions, computes deterministic outcomes, and signs EIP-712 withdrawal authorizations.
+
+The blockchain and settlement layer comprises the Solidity smart contract (\texttt{CypherRollVault.sol}) deployed across Ethereum Sepolia and Base Sepolia, enforcing non-custodial custody and autonomous fund release upon cryptographic signature verification.
+
+\subsection*{6.3 Component Design}
+The system is composed of several interconnected components:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Frontend Component:} Provides the interactive 3D canvas, responsive betting HUD, wallet dropdown, and modal dialogs (Cashier, Provably Fair, VIP).
+    \item \textbf{Backend Processing Component:} Acts as the secure coordinator, validating incoming client requests, computing HMAC hashes, and interacting with the database.
+    \item \textbf{Smart Contract Escrow Component:} Defines the non-custodial rules for asset deposits, reserves tracking, and EIP-712 signature verification.
+    \item \textbf{External Oracle Component:} Screens wallet addresses for OFAC sanctions compliance and queries public RPC nodes for on-chain receipt confirmation.
+\end{itemize}
+
+\subsection*{6.4 Data Flow}
+The data flow begins when a user connects their MetaMask wallet and signs a SIWE challenge message. The verified wallet address initializes a player profile in the database. When the user deposits ETH or USDC into \texttt{CypherRollVault.sol}, the frontend captures the transaction hash and sends a verification request to the backend.
+
+The backend queries the EVM RPC node using Viem to confirm on-chain execution. Upon confirmation, the backend credits the player's balance. When the player places a bet, the backend computes the deterministic outcome via HMAC-SHA256, deducts the wager or credits the payout atomically, and streams the result to the 3D WebGL renderer. When a withdrawal is requested, the backend emits an EIP-712 voucher allowing the user to claim tokens directly from the smart contract.
+
+\subsection*{6.5 Database Design}
+The relational database is architectured in PostgreSQL 16 (via Supabase) to preserve an immutable financial audit trail. It includes four core tables:
+\begin{itemize}[leftmargin=1.5em]
+    \item \texttt{users}: Stores player wallet addresses, primary chain type, active balance, VIP tier, and rakeback totals.
+    \item \texttt{transactions}: Tracks deposits and withdrawals, recording wallet, amount, transaction hash, status, and network.
+    \item \texttt{bets}: Records every wager, game type, wager amount, multiplier, payout, and associated seed references.
+    \item \texttt{seeds}: Preserves active and rotated server seeds, pre-committed hashes, client seeds, and sequential nonces.
+\end{itemize}
+
+\subsection*{6.6 System Workflow}
+The system workflow starts with user authentication through MetaMask. Once authenticated, the user can deposit funds via the Cashier modal, choose an arcade game (CypherDice or CypherCrash), customize their client seed, and place bets. The backend executes the bet in under 1ms and renders the result in 3D. The user can continuously track their statistics, view live global bet tickers, and initiate instant EIP-712 withdrawals whenever desired.
+
+\subsection*{6.7 Security Considerations}
+Security is a foundational pillar of the CypherRoll system:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Smart Contract Invariants:} \texttt{CypherRollVault.sol} implements nonces per user and strict deadline checks to neutralize transaction replay attacks.
+    \item \textbf{Reentrancy Neutralization:} Payouts update internal reserves and state variables prior to triggering external asset transfers.
+    \item \textbf{ACID Isolation:} Database balance modifications execute inside SQL transactions with \texttt{SELECT ... FOR UPDATE} row-level locking to prevent race-condition double spends.
+    \item \textbf{Cryptographic Signatures:} All withdrawals require EIP-712 typed structured signatures signed by the casino operator's private key.
+\end{itemize}
+
+\subsection*{6.8 Conclusion of the Chapter}
+This chapter detailed the comprehensive system design of CypherRoll, including its 3-tier hybrid architecture, component structure, data flow, database schema, workflow, and security considerations.
+
+The next chapter will describe the internal modules of the system in detail.
+\label{chap:design_end}

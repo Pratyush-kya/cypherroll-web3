@@ -1,0 +1,126 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Typography & Layout ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx} % Times New Roman font matching academic report guidelines
+\usepackage[left=1.25in,right=1.0in,top=1.0in,bottom=1.0in,headheight=15pt]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{microtype}
+\usepackage[hyphens]{url}
+\usepackage[colorlinks=true, linkcolor=blue!80!black, urlcolor=blue!70!black, citecolor=green!60!black]{hyperref}
+
+% --- Line Spacing & Paragraph Alignment (Matching Centurion University sample) ---
+\renewcommand{\baselinestretch}{1.18}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\sloppy
+
+% --- Subsection Formatting ---
+\titleformat*{\subsection}{\normalsize\bfseries}
+\titlespacing*{\subsection}{0pt}{10pt}{2pt}
+
+% --- Code Listing Configuration ---
+\lstdefinelanguage{Solidity}{
+    keywords={pragma, solidity, contract, struct, mapping, address, uint, uint256, bool, string, public, private, external, internal, view, pure, payable, modifier, event, emit, constructor, function, require, return, returns, memory, storage, calldata, new, indexed, assembly},
+    keywordstyle=\color{blue!80!black}\bfseries,
+    identifierstyle=\color{black},
+    sensitive=true,
+    comment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    commentstyle=\color{gray!90!black}\itshape,
+    stringstyle=\color{teal!80!black}\ttfamily,
+    morestring=[b]',
+    morestring=[b]"
+}
+
+\lstset{
+    basicstyle=\footnotesize\ttfamily,
+    numbers=none,
+    backgroundcolor=\color{gray!6},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    rulecolor=\color{gray!30},
+    tabsize=2,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false
+}
+
+% --- Front Matter Style (Centered Roman numerals: II, III, IV, V) ---
+\fancypagestyle{frontmatterstyle}{
+    \fancyhf{}
+    \fancyfoot[C]{\normalsize\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% --- Chapter Body Style (Left-aligned 'X | Page') ---
+\fancypagestyle{mainstyle}{
+    \fancyhf{}
+    \fancyfoot[L]{\normalsize\thepage\,$|$\,Page}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[L]{\normalsize\thepage\,$|$\,Page}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\begin{document}
+
+% 00. Cover Page
+\input{sections/00_cover.tex}
+
+% 00. Front Matter (Certificate, Declaration, Abstract, Table of Contents)
+\input{sections/00_frontmatter.tex}
+
+% 01. Chapter 1: Introduction
+\input{sections/01_introduction.tex}
+
+% 02. Chapter 2: Objectives of the Project
+\input{sections/02_objectives.tex}
+
+% 03. Chapter 3: Existing System
+\input{sections/03_existing_system.tex}
+
+% 04. Chapter 4: Proposed System
+\input{sections/04_proposed_system.tex}
+
+% 05. Chapter 5: System Requirements
+\input{sections/05_system_requirements.tex}
+
+% 06. Chapter 6: System Design
+\input{sections/06_system_design.tex}
+
+% 07. Chapter 7: Module Description
+\input{sections/07_module_description.tex}
+
+% 08. Chapter 8: Implementation Details
+\input{sections/08_implementation_details.tex}
+
+% 09. Chapter 9: Testing and Results
+\input{sections/09_testing_results.tex}
+
+% 10. Chapter 10: Conclusion
+\input{sections/10_conclusion.tex}
+
+% 11. Reference
+\input{sections/11_reference.tex}
+
+\end{document}

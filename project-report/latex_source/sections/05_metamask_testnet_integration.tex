@@ -1,0 +1,89 @@
+\section{MetaMask and Testnet Integration Lifecycle}
+
+\subsection{MetaMask and EIP-1193 Injected Provider Architecture}
+To interface with decentralized smart contracts, web applications communicate with browser extension wallets (such as MetaMask) via the standard \textbf{EIP-1193} JavaScript Ethereum Provider interface exposed as \texttt{window.ethereum}.
+
+In CypherRoll, this abstraction is managed through:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Wagmi v2:} React Hooks for Ethereum, handling wallet state, chain switching, and message signing.
+    \item \textbf{Viem:} Ultra-lightweight, type-safe TypeScript interface to EVM JSON-RPC nodes.
+    \item \textbf{RainbowKit:} Cyberpunk-themed modal for connecting injected, mobile, and hardware wallets.
+\end{itemize}
+
+\subsection{Sign-In with Ethereum (SIWE / EIP-4361)}
+CypherRoll eliminates conventional username/password logins and OAuth tracking in favor of **Sign-In with Ethereum** (SIWE). The authentication lifecycle proceeds as follows:
+
+\begin{figure}[h!]
+\centering
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,title=\textbf{Protocol 5.1: Cryptographic SIWE Authentication Handshake}]
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Challenge Request:} Client queries \texttt{GET /api/auth/nonce}. The server creates a cryptographically secure random alphanumeric nonce and stores it in session memory with a 5-minute TTL.
+    \item \textbf{Challenge Message Assembly:} The client formats an EIP-4361 compliant message string containing domain, player address, chain ID, URI, and nonce.
+    \item \textbf{Wallet Signing (Gas-Free):} The client invokes \texttt{signMessageAsync} via MetaMask. MetaMask prompts the user to sign the raw message using their private key (\texttt{personal\_sign}). No gas or on-chain transaction is consumed.
+    \item \textbf{Cryptographic Verification:} Client sends the signature to \texttt{POST /api/auth/verify}. The backend uses Viem's \texttt{verifyMessage} to recover the public address from the signature:
+    $$\text{address}_{\text{rec}} = \text{ecrecover}(\text{message}, \text{sig})$$
+    If $\text{address}_{\text{rec}} \equiv \text{address}_{\text{claim}}$, a signed HttpOnly session cookie (\texttt{cypher\_session}) is issued.
+\end{enumerate}
+\end{tcolorbox}
+\caption{Cryptographic Authentication Flow via MetaMask}
+\end{figure}
+
+\subsection{Testnet Architecture: Sepolia and Base Sepolia}
+For academic auditing, grading, and development, interacting with Ethereum Mainnet incurs real financial costs ($>\$10-\$50$ in gas per transaction). Therefore, CypherRoll is fully engineered to operate on Ethereum and Layer-2 Testnets:
+
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{} l l l X @{}}
+\toprule
+\textbf{Network} & \textbf{Chain ID} & \textbf{RPC Endpoint} & \textbf{Characteristics} \\
+\midrule
+\textbf{Ethereum Sepolia} & \texttt{11155111} & \url{https://rpc.sepolia.org} & Primary Ethereum PoS testnet for Layer-1 contracts \\
+\textbf{Base Sepolia} & \texttt{84532} & \url{https://sepolia.base.org} & Coinbase Layer-2 OP-Stack testnet with sub-cent gas \\
+\textbf{Arbitrum Sepolia} & \texttt{421614} & \url{https://sepolia-rollup.arbitrum.io/rpc} & Layer-2 Nitro Rollup testnet with sub-second finality \\
+\bottomrule
+\end{tabularx}
+\caption{Supported EVM Testnet Networks}
+\end{table}
+
+\subsection{Acquiring Free Testnet Gas Assets (Faucets)}
+Zero real money is needed to test all features of the application. Developers obtain testnet gas tokens via automated faucets:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Google Cloud Web3 Faucet:} Delivers free Sepolia ETH with Google authentication (\url{https://cloud.google.com/application/web3/faucet/ethereum/sepolia}).
+    \item \textbf{Coinbase Developer Faucet:} Dispenses 0.1 Base Sepolia ETH daily (\url{https://coinbase.com/faucets/base-sepolia-faucet}).
+    \item \textbf{Alchemy Faucet:} Distributes multi-chain test tokens directly to EVM addresses (\url{https://sepoliafaucet.com}).
+\end{itemize}
+
+\subsection{Deposit Receipt Verification \& Idempotency}
+When a player transfers funds to the escrow vault on a testnet, the backend verifies the on-chain receipt through public RPC clients:
+
+\begin{lstlisting}[language=Solidity,caption={Deposit Receipt Verification in lib/web3/deposit-listener.ts}]
+export async function verifyOnChainDeposit(params: {
+  txHash: string;
+  network: 'BASE' | 'ARB' | 'SOL';
+  walletAddress: string;
+  amountFallback?: number;
+}) {
+  // 1. Idempotency Check: Prevent Double-Crediting
+  const { data: existingTx } = await supabaseAdmin
+    .from('transactions')
+    .select('id, status')
+    .eq('tx_hash', params.txHash)
+    .single();
+
+  if (existingTx) {
+    return { verified: false, error: 'Tx hash already credited!' };
+  }
+
+  // 2. Query EVM RPC for on-chain receipt confirmation
+  const receipt = await rpcClient.getTransactionReceipt({
+    hash: params.txHash as `0x${string}`,
+  });
+
+  if (receipt && receipt.status === 'success') {
+    return { verified: true, amountUsdc: params.amountFallback || 100.0, txHash: params.txHash };
+  }
+}
+\end{lstlisting}
+
+This two-tier mechanism guarantees that network lag or malicious replay attacks cannot credit balance twice for a single on-chain transaction hash.

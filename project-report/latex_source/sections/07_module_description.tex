@@ -1,0 +1,58 @@
+\vspace{0.8cm}
+\begin{center}
+\textbf{CHAPTER 7}\\[0.15cm]
+\textbf{MODULE DESCRIPTION}
+\end{center}
+\label{chap:modules}
+\vspace{0.2cm}
+
+\subsection*{7.1 Introduction}
+The CypherRoll platform is divided into specialized, decoupled modules, each responsible for executing distinct functionalities within the ecosystem. This modular architecture guarantees high maintainability, rigorous security boundaries, testability, and horizontal scalability. Each module interacts cleanly with others to provide an authentic, provably fair Web3 gaming experience.
+
+\subsection*{7.2 Player Module (User Module)}
+The Player Module represents the user-facing interface and client state. It allows players to connect their Web3 wallet (MetaMask on EVM networks or Phantom on Solana), authenticate via SIWE (EIP-4361), manage their bankroll, select games, customize client seeds, and trigger payouts. The module features an active wallet desync guard that immediately warns players if their active browser extension address diverges from their authenticated session profile.
+
+\subsection*{7.3 Organization of Roles (Contract Owner / Operator Module)}
+The system delineates cryptographic roles to uphold security invariants:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Contract Owner:} The administrative address that deploys \texttt{CypherRollVault.sol}. It possesses exclusive rights to configure operator signers and invoke emergency pause modifiers (\texttt{whenNotPaused}) during security incidents.
+    \item \textbf{Casino Operator Signer:} An automated, isolated cryptographic key pair utilized solely by Tier-2 backend workers to generate EIP-712 structured withdrawal vouchers. The operator key cannot unilaterally extract vault funds; it can only authorize payouts to the specific player address matching the verified ledger debit.
+\end{itemize}
+
+\subsection*{7.4 Backend Module (API \& Verification Module)}
+The Backend Module acts as the operational core of the platform, implemented via Next.js API Routes:
+\begin{itemize}[leftmargin=1.5em]
+    \item \texttt{/api/auth/*}: Generates cryptographic challenge nonces and verifies EIP-191 signatures via Viem's \texttt{verifyMessage}.
+    \item \texttt{/api/cashier/*}: Handles deposit receipt verification on EVM RPC nodes, checks transaction hash idempotency, and constructs EIP-712 withdrawal signatures.
+    \item \texttt{/api/games/*}: Implements bet validation, seed rotation, game result calculation, and atomic balance ledger mutations.
+\end{itemize}
+
+\subsection*{7.5 Smart Contract Module (CypherRollVault.sol)}
+The Smart Contract Module forms the decentralized foundation of fund custody. Deployed on EVM networks, it exposes:
+\begin{itemize}[leftmargin=1.5em]
+    \item \texttt{depositETH()} and \texttt{depositERC20()}: Accepts native ETH and ERC-20 stablecoins, updating reserve mappings and emitting on-chain events.
+    \item \texttt{withdraw()}: Verifies EIP-712 operator signatures over player address, token address, amount, sequential nonce, and deadline timestamp before autonomously transferring assets.
+\end{itemize}
+
+\subsection*{7.6 3D WebGL Game Engine Module}
+This module is responsible for real-time visualization and physical simulation using Three.js:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{CypherDice Engine:} Simulates real-time polyhedral tumbling using cubic Bezier physics lerping, settling deterministically on the exact roll calculated by the provably fair engine.
+    \item \textbf{CypherCrash Engine:} Renders an animated spacecraft with dynamic particle thrusters, camera shake, and exponential flight curves synchronized with live game ticks.
+\end{itemize}
+
+\subsection*{7.7 Provably Fair \& Cryptographic Module}
+The Provably Fair Module encapsulates all mathematical randomness algorithms:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Seed Commitment:} Generates 256-bit cryptographically secure server seeds via \texttt{crypto.randomBytes(32)} and calculates public SHA-256 digests.
+    \item \textbf{Outcome Derivation:} Evaluates $\mathcal{H} = \text{HMAC-SHA256}(S_{\text{srv}}, S_{\text{cli}} : N)$ and maps entropy slices to dice rolls ($[0.00, 99.99]$) and crash multipliers ($[1.00\times, \infty)$) with mathematically defined house edges.
+\end{itemize}
+
+\subsection*{7.8 Integration of Modules}
+All modules in CypherRoll are closely integrated: the Player Module interacts with the Backend Module via authenticated JSON-RPC requests; the Backend Module queries the Smart Contract Module over public JSON-RPC nodes and records state in the Database Module; and the Provably Fair Module feeds deterministic outcomes directly into the 3D Game Engine Module.
+
+\subsection*{7.9 Conclusion of the Chapter}
+This chapter described the specialized functional modules of the CypherRoll platform, detailing their individual roles, security boundaries, and collaborative interactions.
+
+The next chapter will present the concrete implementation details, development environments, and technologies utilized across each layer.
+\label{chap:modules_end}
