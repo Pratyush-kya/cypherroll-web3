@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LifeBuoy, ShieldCheck, Wallet, Flame, Crown, Landmark, MessageSquare, KeyRound, LogOut, Sparkles, ChevronDown, Bomb, Layers } from 'lucide-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useBalance } from 'wagmi';
 import { truncateHash } from '@/lib/utils';
 import { UserProfile } from '@/lib/web3/useAuth';
 
@@ -64,6 +65,11 @@ export default function Navbar({
   const [walletDropOpen, setWalletDropOpen] = useState(false);
   const walletDropRef = useRef<HTMLDivElement>(null);
 
+  const activeEvmAddress = (evmAddress || (user?.chain === 'EVM' ? user?.wallet : undefined)) as `0x${string}` | undefined;
+  const { data: evmBalance } = useBalance({
+    address: activeEvmAddress,
+  });
+
   // Close wallet dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -106,6 +112,12 @@ export default function Navbar({
               {user.chain || chain}
             </span>
           </div>
+          {activeEvmAddress && (
+            <div title="MetaMask On-Chain Balance" className="hidden xl:flex items-center gap-1 bg-purple-950/40 border border-purple-500/30 px-2 py-1 rounded-xl text-[10px] font-mono text-purple-300">
+              <span>🦊</span>
+              <span>{evmBalance ? parseFloat(evmBalance.formatted).toFixed(4) : '0.0000'} {evmBalance?.symbol || 'ETH'}</span>
+            </div>
+          )}
           <button
             onClick={onSignOut}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-500/40 text-xs font-heading font-bold text-slate-300 hover:text-rose-300 transition-all"
@@ -359,11 +371,24 @@ export default function Navbar({
             <span className={`font-bold ${isDemoMode ? 'text-amber-300' : 'text-primary'}`}>
               ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <span className="text-slate-600">{isDemoMode ? 'DEMO' : 'REAL'}</span>
+            <span className="text-slate-500 font-bold">{isDemoMode ? 'DEMO' : 'VAULT'}</span>
             {isDemoMode && onResetDemoBalance && (
               <button onClick={onResetDemoBalance} className="text-[9px] text-slate-400 hover:text-amber-300 bg-slate-800 px-1 py-0.5 rounded border border-slate-700 transition-colors">↺</button>
             )}
           </div>
+
+          {/* Real On-Chain MetaMask Balance Pill */}
+          {activeEvmAddress && (
+            <div
+              title="Real coins in your connected MetaMask Web3 wallet"
+              className="hidden sm:flex items-center gap-1.5 bg-purple-950/40 border border-purple-500/40 px-2.5 py-1.5 rounded-xl text-[11px] font-mono whitespace-nowrap shadow-sm"
+            >
+              <span className="text-xs">🦊</span>
+              <span className="font-bold text-purple-300">
+                {evmBalance ? parseFloat(evmBalance.formatted).toFixed(4) : '0.0000'} {evmBalance?.symbol || 'ETH'}
+              </span>
+            </div>
+          )}
 
           {/* Cashier */}
           <button
@@ -478,6 +503,14 @@ export default function Navbar({
                 <button onClick={onResetDemoBalance} className="text-[9px] text-slate-400 hover:text-amber-300 bg-slate-800 px-1 py-0.5 rounded border border-slate-700">↺</button>
               )}
             </div>
+            {activeEvmAddress && (
+              <div className="flex items-center gap-1.5 bg-purple-950/40 border border-purple-500/40 px-2.5 py-1.5 rounded-xl text-[11px] font-mono">
+                <span className="text-xs">🦊</span>
+                <span className="font-bold text-purple-300">
+                  {evmBalance ? parseFloat(evmBalance.formatted).toFixed(4) : '0.0000'} {evmBalance?.symbol || 'ETH'}
+                </span>
+              </div>
+            )}
             <button onClick={onOpenCashier} className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-heading font-bold text-slate-200 transition-colors">
               <Landmark className="w-3.5 h-3.5 text-emerald-400" />Cashier
             </button>

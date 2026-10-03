@@ -7,7 +7,7 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import { WagmiProvider, createConfig, http, createStorage, noopStorage } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { base, arbitrum, mainnet } from 'wagmi/chains';
+import { base, arbitrum, mainnet, baseSepolia, sepolia } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -59,13 +59,15 @@ const safeStorage = typeof window !== 'undefined'
   : createStorage({ storage: noopStorage });
 
 const wagmiConfig = createConfig({
-  chains: [base, arbitrum, mainnet],
+  chains: [base, arbitrum, mainnet, baseSepolia, sepolia],
   connectors: [injected()],
   storage: safeStorage,
   transports: {
     [base.id]: http(),
     [arbitrum.id]: http(),
     [mainnet.id]: http(),
+    [baseSepolia.id]: http('https://sepolia.base.org'),
+    [sepolia.id]: http('https://rpc.sepolia.org'),
   },
   ssr: true,
 });

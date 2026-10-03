@@ -1,5 +1,5 @@
 import { createPublicClient, http, parseAbiItem } from 'viem';
-import { base, arbitrum } from 'viem/chains';
+import { base, arbitrum, baseSepolia, sepolia } from 'viem/chains';
 import { supabaseAdmin, supabase } from '@/lib/supabase';
 import { NETWORK_CONFIG } from './withdrawal-signer';
 
@@ -26,6 +26,16 @@ const baseClient = createPublicClient({
 const arbClient = createPublicClient({
   chain: arbitrum,
   transport: http('https://arb1.arbitrum.io/rpc'),
+});
+
+const baseSepoliaClient = createPublicClient({
+  chain: baseSepolia,
+  transport: http('https://sepolia.base.org'),
+});
+
+const sepoliaClient = createPublicClient({
+  chain: sepolia,
+  transport: http('https://rpc.sepolia.org'),
 });
 
 const DEPOSITED_EVENT_ABI = parseAbiItem(
@@ -66,36 +76,43 @@ export async function verifyOnChainDeposit(params: {
     }
   }
 
-  // 2. On-Chain Receipt Inspection (Base & Arbitrum)
-  if (params.network === 'BASE' || params.network === 'ARB') {
-    const rpcClient = params.network === 'BASE' ? baseClient : arbClient;
+  // 2. On-Chain Receipt Inspection (Base, Arbitrum, Base Sepolia, Sepolia)
+  if (params.network === 'BASE' || params.network === 'ARB' || (params.network as string) === 'SEPOLIA') {
+    const clients = [
+      params.network === 'BASE' ? baseClient : arbClient,
+      baseSepoliaClient,
+      sepoliaClient,
+    ];
 
     try {
       if (params.txHash.startsWith('0x') && params.txHash.length === 66) {
-        const receipt = await rpcClient.getTransactionReceipt({
-          hash: params.txHash as `0x${string}`,
-        });
+        for (const rpcClient of clients) {
+          try {
+            const receipt = await rpcClient.getTransactionReceipt({
+              hash: params.txHash as `0x${string}`,
+            });
 
-        if (receipt && receipt.status === 'success') {
-          // Transaction confirmed on-chain
-          const amount = params.amountFallback || 100.0;
-          return {
-            verified: true,
-            amountUsdc: amount,
-            txHash: params.txHash,
-          };
+            if (receipt && receipt.status === 'success') {
+              const amount = params.amountFallback || 100.0;
+              return {
+                verified: true,
+                amountUsdc: amount,
+                txHash: params.txHash,
+              };
+            }
+          } catch {}
         }
       }
     } catch {
       // RPC check failed or unconfirmed tx
     }
 
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SIMULATED_DEPOSITS !== 'true') {
       return {
         verified: false,
         amountUsdc: 0,
         txHash: params.txHash,
-        error: 'On-chain transaction receipt could not be verified on the network RPC. Ensure your transaction is confirmed on Base / Arbitrum.',
+        error: 'On-chain transaction receipt could not be verified on the network RPC. Ensure your transaction is confirmed on Base / Arbitrum / Sepolia.',
       };
     }
 

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { Landmark, ArrowDownLeft, ArrowUpRight, Copy, Check, X, ShieldAlert, ShieldCheck, Key, CheckCircle2, AlertCircle, FileCode } from 'lucide-react';
+import { useBalance, useSendTransaction } from 'wagmi';
+import { parseEther } from 'viem';
 import { truncateHash } from '@/lib/utils';
 
 interface CashierModalProps {
@@ -48,6 +50,14 @@ export default function CashierModal({
   const [txHashInput, setTxHashInput] = useState<string>('');
   const [showTxHashField, setShowTxHashField] = useState<boolean>(false);
 
+  const isEvm = userWallet?.startsWith('0x');
+  const { data: evmBalance } = useBalance({
+    address: isEvm ? (userWallet as `0x${string}`) : undefined,
+  });
+  const { sendTransactionAsync } = useSendTransaction();
+  const [ethDepositAmount, setEthDepositAmount] = useState<string>('0.005');
+  const [onChainStatus, setOnChainStatus] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const depositAddress = selectedNetwork === 'SOL'
@@ -60,6 +70,48 @@ export default function CashierModal({
     navigator.clipboard.writeText(text);
     setFn(true);
     setTimeout(() => setFn(false), 2000);
+  };
+
+  const handleMetaMaskDeposit = async () => {
+    if (!isEvm) return;
+    try {
+      setIsSubmitting(true);
+      setErrorMsg(null);
+      setOnChainStatus('Confirm transaction in your MetaMask extension...');
+
+      const txHash = await sendTransactionAsync({
+        to: depositAddress as `0x${string}`,
+        value: parseEther(ethDepositAmount || '0.001'),
+      });
+
+      setOnChainStatus(`Broadcasted: ${txHash.slice(0, 10)}... Verifying on-chain...`);
+
+      const res = await fetch('/api/cashier/verify-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          txHash,
+          network: selectedNetwork,
+          walletAddress: userWallet,
+          amount: parseFloat(ethDepositAmount) * 2500 || 50,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Deposit verification failed');
+
+      onDepositSuccess(data.amount || 50);
+      setOnChainStatus('Deposit confirmed & credited to your vault!');
+      setTimeout(() => {
+        setOnChainStatus(null);
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'MetaMask transaction rejected or failed');
+      setOnChainStatus(null);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeposit = async () => {
@@ -367,6 +419,47 @@ export default function CashierModal({
                     </button>
                   </div>
                 </div>
+
+                {/* MetaMask Live On-Chain Balance & 1-Click Deposit */}
+                {isEvm && (selectedNetwork === 'BASE' || selectedNetwork === 'ARB') && (
+                  <div className="bg-purple-950/30 border border-purple-500/40 rounded-xl p-3.5 mb-4 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-300 flex items-center gap-1.5 font-bold">
+                        <span>🦊</span> MetaMask Real Balance:
+                      </span>
+                      <span className="text-purple-300 font-bold bg-purple-900/50 px-2 py-0.5 rounded border border-purple-500/30">
+                        {evmBalance ? parseFloat(evmBalance.formatted).toFixed(4) : '0.0000'} {evmBalance?.symbol || 'ETH'}
+                      </span>
+                    </div>
+
+                    <div className="pt-1 flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] font-mono text-slate-400 block mb-1">Send On-Chain ETH to Vault:</label>
+                        <input
+                          type="text"
+                          value={ethDepositAmount}
+                          onChange={(e) => setEthDepositAmount(e.target.value)}
+                          placeholder="0.005"
+                          className="w-full bg-slate-900 border border-purple-500/30 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-purple-400"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleMetaMaskDeposit}
+                        disabled={isSubmitting || !parseFloat(ethDepositAmount)}
+                        className="mt-4 px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-heading font-bold rounded-lg shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <span>🦊 Send with MetaMask</span>
+                      </button>
+                    </div>
+
+                    {onChainStatus && (
+                      <div className="text-[11px] font-mono text-amber-300 animate-pulse pt-1">
+                        {onChainStatus}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Quick Deposit Simulation */}
                 <div className="mb-5">
