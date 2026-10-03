@@ -4,63 +4,55 @@
 \pagestyle{mainstyle}
 \thispagestyle{mainstyle}
 
+\vspace*{0.5cm}
 \begin{center}
 \textbf{CHAPTER 1}\\[0.15cm]
 \textbf{INTRODUCTION}
 \end{center}
 \label{chap:intro}
-\vspace{0.2cm}
+\vspace{0.4cm}
 
-\subsection*{1.1 Overview}
-Online gaming and crypto-based wagering represent one of the fastest growing segments of the decentralized digital economy. Millions of users participate in digital casinos, prediction markets, and arcade games globally every year. However, despite this immense participation, traditional online casinos remain largely opaque, centralized black-boxes where users surrender control of both their personal data and their deposited funds. Players typically interact with proprietary user interfaces without any verifiable or tamper-proof guarantee that the underlying game outcomes are fair.
+\subsection*{1.1 Background and Overview of Web3 Gaming}
+Web3 applications introduce user-controlled non-custodial wallets, blockchain settlement, and cryptographic identity primitives into conventional web workflows. In modern digital wagering and prediction platforms, however, purely on-chain execution models introduce substantial block confirmation delays (such as 12-second block intervals on Ethereum Mainnet) and prohibitive gas transaction fees that conflict with fast-paced, interactive consumer gameplay. 
 
-The CypherRoll system is designed to transform this untrusted gaming experience into a transparent, secure, and provably fair digital environment. It is a blockchain-based gaming platform that enables users to wager and play arcade games (such as CypherDice and CypherCrash) with complete mathematical fairness. By integrating cryptographic commit-reveal hashing algorithms with Ethereum smart contracts, the system guarantees that neither the platform operator nor the player can alter the outcome of a game once placed.
+The CypherRoll platform resolves this fundamental tension through a state-of-the-art \textbf{3-Tier Hybrid Web3 Architecture}. In this design, high-frequency game execution and interactive 3D WebGL rendering are handled efficiently within the browser and application layer, while value custody and capital settlements are anchored to decentralized blockchain escrow contracts. This guarantees that players experience sub-second responsiveness without forfeiting decentralized custody or mathematical fairness.
 
-\subsection*{1.2 Background of the Study}
-Traditional gaming platforms rely heavily on centralized cloud servers where game logic, random number generators (RNGs), and player balances are stored and controlled by third-party operators. These platforms often advertise fair odds and certified RNGs, but such assertions are vulnerable to backstage manipulation and lack real-time public auditability. Additionally, users do not retain custody of their funds, as deposits remain stored in centralized bank accounts or corporate custodial wallets.
-
-With the advancement of blockchain technology and decentralized virtual machines, there is an unprecedented opportunity to create gaming architectures that provide transparency, non-custodial asset control, and verifiable randomness. Smart contracts deployed on networks such as Ethereum and Layer-2 rollups (Base and Arbitrum) provide immutable execution logic. By combining off-chain hardware-accelerated 3D graphics with on-chain cryptographic settlement, it is possible to build a system that delivers responsive real-time gameplay without sacrificing decentralization.
-
-CypherRoll leverages these technologies to create a decentralized platform where users can enjoy high-speed 3D WebGL gaming while retaining complete cryptographic control over their assets.
+\subsection*{1.2 Motivation of the Study}
+The CypherRoll project is driven by four primary software engineering and architectural imperatives:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Verifiable Mathematical Fairness:} Replacing centralized, opaque random number generators (``black-box RNGs'') with verifiable, deterministic commit-reveal cryptographic hashing protocols.
+    \item \textbf{Low-Latency Interactive Gameplay:} Eliminating gas-fee frictions and transaction wait-times from individual gaming rounds by maintaining off-chain state execution backed by Three.js 60 FPS WebGL graphics.
+    \item \textbf{Non-Password Cryptographic Wallet Identity:} Transitioning from vulnerable email/password accounts and intrusive KYC document harvesting to decentralized cryptographic wallet signatures via Sign-In with Ethereum (SIWE -- EIP-4361) and Solana Wallet Adapter.
+    \item \textbf{Auditable Non-Custodial Capital Settlement:} Preventing operator solvency failures, commingling of player funds, and arbitrary withdrawal lockouts through smart contract escrow vaults deployed across EVM Layer-2 rollups.
+\end{enumerate}
 
 \subsection*{1.3 Problem Statement}
-The current online gaming ecosystem faces several critical challenges:
-\begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Opaque Randomness:} There is no reliable mechanism for players to verify whether a dice roll or multiplier crash was truly random or algorithmically tilted in favor of the house.
-    \item \textbf{Custodial Vulnerabilities:} Existing platforms require players to deposit funds into centralized custodial wallets. This exposes users to solvency risks, exit scams, and arbitrary withdrawal lockouts.
-    \item \textbf{Invasive KYC Demands:} Conventional platforms force users to disclose sensitive personal identity documents, creating vulnerability to data breaches and surveillance.
-    \item \textbf{High Latency of On-Chain Gaming:} Purely on-chain decentralized casinos suffer from block latency (12 seconds on Ethereum) and excessive per-transaction gas fees, making fast-paced gaming unplayable.
+Traditional online gambling systems operate as centralized black boxes where server-side random number generation, player ledger databases, and treasury funds are held entirely by a single corporate operator. This centralized paradigm suffers from three critical industry-wide flaws:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Opaque and Unauditable Randomness:} Players have no mathematical mechanism to verify whether a dice roll, roulette spin, or multiplier crash was authentically random or algorithmically altered to maximize operator profit.
+    \item \textbf{Custodial Counterparty Vulnerability:} Players must deposit funds directly into custodial operator accounts, leaving them completely vulnerable to insolvency, internal embezzlement, and frozen withdrawals.
+    \item \textbf{Scalability Constraints of Pure On-Chain DApps:} Existing fully on-chain casinos execute every single wager as an individual blockchain transaction, resulting in exorbitant gas fees and multi-second latencies that make real-time gaming unviable.
 \end{itemize}
 
-These issues highlight the acute need for an architecture that delivers sub-second gameplay responsiveness while ensuring cryptographic fairness and non-custodial financial settlement.
-
-\subsection*{1.4 Purpose of the Project}
-The primary purpose of the CypherRoll project is to develop a decentralized hybrid gaming platform that enables users to wager and play 3D games with mathematical provable fairness and non-custodial smart contract security.
-
-The system aims to create a verifiable, transparent method of generating game outcomes using HMAC-SHA256 commit-reveal hashing. It also seeks to streamline user onboarding through gas-free, zero-KYC cryptographic wallet authentication using Sign-In with Ethereum (SIWE - EIP-4361).
-
-By providing users with cryptographic proof of fairness and non-custodial on-chain asset custody via smart contract escrow vaults, the project promotes trust, transparency, and decentralization in the gaming sector.
-
-\subsection*{1.5 Scope of the Project}
-The scope of the CypherRoll system includes:
-\begin{itemize}[leftmargin=1.5em]
-    \item Development of a high-performance web application utilizing Next.js 14, Tailwind CSS, and hardware-accelerated Three.js 3D WebGL scenes for CypherDice and CypherCrash.
-    \item Implementation of an HMAC-SHA256 provably fair cryptographic pipeline guaranteeing mathematical randomness through pre-committed server seeds, player client seeds, and nonces.
-    \item Deployment of a Solidity escrow vault contract (\texttt{CypherRollVault.sol}) on Ethereum Sepolia and Base Sepolia test networks for non-custodial deposit and withdrawal handling.
-    \item Integration of EIP-712 typed structured data signing allowing instant, cryptographically authorized user withdrawals.
-    \item Incorporation of MetaMask and RainbowKit for multi-network EVM wallet connectivity alongside Solana Phantom adapter support.
-    \item Integration of automated AML and OFAC sanctions compliance screening to detect and quarantine illicit addresses without compromising regular player privacy.
+\subsection*{1.4 Scope and Boundaries of the Project}
+The scope of the CypherRoll project encompasses the end-to-end design, implementation, and empirical validation of a full-stack Web3 wagering application:
+\begin{itemize}[leftmargin=*]
+    \item Modern frontend application engineering using Next.js 14, TypeScript, Tailwind CSS, and Framer Motion.
+    \item High-fidelity hardware-accelerated 3D WebGL rendering for \textbf{CypherDice} and \textbf{CypherCrash} built with Three.js and Draco-compressed GLB asset pipelines, complete with automatic canvas fallbacks for non-WebGL devices.
+    \item Cryptographic Provably Fair Engine using HMAC-SHA256 with SHA-256 pre-committed server seeds, user-selected client seeds, and sequential nonces.
+    \item Solidity Non-Custodial Smart Contract Escrow Vault (\texttt{CypherRollVault.sol}) deployed across EVM networks (Ethereum Sepolia and Base Sepolia testnets) with EIP-712 structured signature withdrawal authorization.
+    \item Relational persistence and real-time state synchronization through Supabase PostgreSQL, incorporating atomic balance mutations, row-level security, and a live global betting feed.
+    \item Automated AML/OFAC sanctions compliance screening, client-side PoW rate-limiting, and Kelly Criterion bankroll solvency controls.
 \end{itemize}
 
-\subsection*{1.6 Significance of the Study}
-The CypherRoll project offers several substantial benefits. It provides an auditable and tamper-proof method of verifying casino game results, replacing blind trust with cryptographic certainty.
+\subsection*{1.5 Key Contributions of the System}
+The primary contributions of this project include:
+\begin{enumerate}[leftmargin=*]
+    \item Designing and executing a provably fair cryptographic protocol that allows players to independently verify round outcomes in real-time or posthumously using open mathematical formulas.
+    \item Developing a dual-chain Web3 authentication interface supporting EVM wallets (MetaMask, Coinbase Wallet, Rainbow) and Solana wallets (Phantom) under a unified session abstraction.
+    \item Demonstrating an enterprise-grade Layer-2 settlement model achieving sub-cent gas fees and non-custodial escrow protection on Base Sepolia.
+\end{enumerate}
 
-The system empowers players by giving them non-custodial control over their funds. Unlike traditional gambling websites where balances are numbers in an arbitrary database, CypherRoll balances are backed by verifiable on-chain vault reserves redeemable via cryptographic vouchers.
-
-Furthermore, by utilizing Layer-2 test networks such as Base Sepolia and Ethereum Sepolia, the system demonstrates that Web3 gaming can achieve sub-cent transaction fees and sub-second confirmation times, establishing a viable commercial blueprint for next-generation decentralized entertainment.
-
-\subsection*{1.7 Conclusion of the Chapter}
-This chapter introduced the concept of CypherRoll and highlighted the fundamental vulnerabilities present in traditional centralized online casinos. It explained the necessity of a hybrid decentralized architecture that ensures mathematical provable fairness, non-custodial fund custody, and high-performance interactive 3D gameplay.
-
-The next chapter will focus on the objectives of the project and outline the specific technical milestones the system aims to achieve.
+\subsection*{1.6 Organization of the Report}
+The remainder of this report is organized into ten chapters aligned with academic guidelines: Chapter 2 details the project objectives; Chapter 3 evaluates existing gaming architectures; Chapter 4 presents the proposed hybrid system; Chapters 5 through 8 provide the system requirements, architectural design, module breakdown, and implementation details; Chapter 9 presents testing and experimental results; and Chapter 10 concludes the report with future directions.
 \label{chap:intro_end}

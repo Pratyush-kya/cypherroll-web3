@@ -21,8 +21,9 @@ This is to certify that the project report entitled \textbf{``CypherRoll: A Prov
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}cc}
     \rule{5.5cm}{0.4pt} & \rule{5.5cm}{0.4pt} \\
     \textbf{Project Supervisor} & \textbf{Head of the Department} \\
-    Department of CSE & Department of CSE \\
-    Centurion University, Odisha & Centurion University, Odisha
+    \textbf{Sunny Singh} & Department of CSE \\
+    Department of CSE & Centurion University, Odisha \\
+    Centurion University, Odisha & 
 \end{tabular*}
 
 % Declaration (Page III)
@@ -59,7 +60,7 @@ All materials, smart contracts, cryptographic libraries, and technical specifica
     \vspace{1.0cm}
 \end{center}
 
-I would like to express my profound gratitude and deep regards to my project supervisor and mentors in the Department of Computer Science and Engineering for their exemplary guidance, technical insights, and constant encouragement throughout the development of this project.
+I would like to express my profound gratitude and deep regards to my project guide, \textbf{Sunny Singh}, Department of Computer Science and Engineering, for his exemplary guidance, invaluable technical insights, and constant encouragement throughout the architecture and development of the CypherRoll platform.
 
 I am immensely obliged to the Head of the Department, Department of Computer Science and Engineering, and the administration of the School of Engineering and Technology, Centurion University of Technology and Management, Odisha, for providing the necessary facilities, computing infrastructure, and academic ecosystem to carry out this research and engineering initiative.
 
@@ -76,64 +77,62 @@ Finally, I express my heartfelt gratitude to my family and friends for their con
     Centurion University of Technology and Management, Odisha
 \end{flushright}
 
-% Abstract (Page IV)
+% Abstract (Page V)
 \newpage
 \pagestyle{frontmatterstyle}
 \thispagestyle{frontmatterstyle}
 \begin{center}
+    \vspace*{0.5cm}
     {\Large \textbf{ABSTRACT}\par}
     \vspace{0.8cm}
 \end{center}
 
-Online gaming and iGaming platforms constitute a multi-billion dollar global sector, yet legacy centralized platforms suffer from acute transparency deficits, commonly termed ``black-box algorithms''. Players have no cryptographic guarantees that game results are unmanipulated, nor do they retain custody of deposited funds. In contrast, fully on-chain gaming models implemented on Layer-1 blockchains suffer from prohibitively high transaction gas costs and multi-second block latency, rendering real-time interactive gameplay impossible.
+CypherRoll is a Web3-oriented online gaming platform designed around a hybrid execution model that separates responsive real-time game execution from blockchain-based non-custodial settlement. The project combines a modern Next.js and React application layer with Three.js/WebGL 3D hardware-accelerated visualization, wallet-based cryptographic authentication, cryptographic provable fairness, Supabase-backed relational persistence and real-time state synchronization, and an EVM escrow-vault smart contract component. The application implements two principal games---CypherDice and CypherCrash---along with a vault/cashier interface, live betting feed, community communication, support workflows, and an independent provably-fair verification interface.
 
-CypherRoll is a blockchain-based platform designed to address these challenges by introducing a secure, transparent, and provably fair hybrid Web3 gaming ecosystem. The system combines high-performance off-chain game execution with non-custodial on-chain settlement. A native Three.js 3D WebGL engine delivers hardware-accelerated 60 FPS graphics for interactive games including CypherDice and CypherCrash. Cryptographic fairness is guaranteed through an HMAC-SHA256 commit-reveal protocol with pre-committed server seeds, user-chosen client seeds, and monotonically increasing nonces.
+The core cryptographic fairness mechanism employs a cryptographically secure server seed, a SHA-256 commitment published prior to bet placement, a player-controlled client seed, and a strictly incrementing nonce. HMAC-SHA256 deterministically derives game outcomes, allowing the revealed server seed and recorded inputs to be independently verified by players. The platform incorporates deterministic statistical testing, atomic wager balance mutations under concurrency, wallet signature authentication (Sign-In with Ethereum - EIP-4361 and Solana Wallet Adapter), real-time event broadcasting, and cryptographic withdrawal authorization via EIP-712 structured signatures.
 
-The platform utilizes modern web technologies for the frontend, a Node.js-based backend for processing and validation, and Ethereum smart contracts for non-custodial treasury management and fund settlements. Financial transactions are secured via a custom Solidity escrow vault (\texttt{CypherRollVault.sol}) deployed across EVM networks (Ethereum Sepolia, Base Sepolia, Arbitrum). Player onboarding is zero-KYC and gas-free using Sign-In with Ethereum (SIWE - EIP-4361), while withdrawals are executed via EIP-712 typed structured signatures authorized by the casino operator.
-
-Key features of the system include real-time provable fairness verification, hardware-accelerated 3D WebGL physics, dual-chain wallet integration (MetaMask on EVM and Phantom on Solana), automated AML/OFAC sanctions screening, and dynamic bankroll safety controls governed by the Kelly Criterion.
-
-The CypherRoll system provides a decentralized and tamper-proof solution that transforms online gaming into an authentic, auditable, and self-custodial experience. The project demonstrates the practical application of blockchain technology in the gaming and financial entertainment sector and offers a scalable foundation for future advancements.
+The system architecture is structured as a three-tier hybrid model: presentation layer, application and game execution layer, and persistence/settlement layer. This decoupling addresses the latency and high gas-cost bottlenecks of executing high-frequency game state transitions directly on-chain, while preserving the cryptographic auditability and non-custodial security guarantees of decentralized ledgers.
 
 \vspace{0.8cm}
-\noindent\textbf{Keywords:} Blockchain, Web3, MetaMask, Smart Contracts, Provably Fair, HMAC-SHA256, Solidity, EIP-712, SIWE, Three.js, Ethereum, Base Sepolia.
+\noindent\textbf{Keywords:} Web3, Provably Fair Gaming, HMAC-SHA256, SHA-256, Blockchain, Smart Contracts, Next.js, Three.js, WebGL, Supabase, MetaMask, EVM, Solana, CypherDice, CypherCrash.
 
-% Table of Contents (Page V)
+% Table of Contents (Page VI)
 \newpage
 \pagestyle{frontmatterstyle}
 \thispagestyle{frontmatterstyle}
 \begin{center}
+    \vspace*{0.5cm}
     {\Large \textbf{TABLE OF CONTENTS}\par}
     \vspace{0.8cm}
 \end{center}
 
 \begin{center}
 \renewcommand{\arraystretch}{1.45}
-\begin{tabular}{|>{\centering\arraybackslash}m{2.8cm}|>{\centering\arraybackslash}m{7.8cm}|>{\centering\arraybackslash}m{2.8cm}|}
+\begin{tabular}{|>{\centering\arraybackslash}m{2.8cm}|>{\raggedright\arraybackslash}m{7.8cm}|>{\centering\arraybackslash}m{2.8cm}|}
 \hline
-\textbf{Chapter No.} & \textbf{Chapters} & \textbf{Page No} \\
+\textbf{Chapter No.} & \multicolumn{1}{c|}{\textbf{Chapters}} & \textbf{Page No} \\
 \hline
-\textbf{1} & \textbf{Introduction} & \textbf{01--03} \\
+\textbf{1} & \hspace{0.4cm}\textbf{Introduction} & \textbf{01--03} \\
 \hline
-\textbf{2} & \textbf{Objectives of the Project} & \textbf{04--05} \\
+\textbf{2} & \hspace{0.4cm}\textbf{Objectives of the Project} & \textbf{04--05} \\
 \hline
-\textbf{3} & \textbf{Existing System} & \textbf{06--08} \\
+\textbf{3} & \hspace{0.4cm}\textbf{Existing System} & \textbf{06--08} \\
 \hline
-\textbf{4} & \textbf{Proposed System} & \textbf{09--12} \\
+\textbf{4} & \hspace{0.4cm}\textbf{Proposed System} & \textbf{09--12} \\
 \hline
-\textbf{5} & \textbf{System Requirements} & \textbf{13--15} \\
+\textbf{5} & \hspace{0.4cm}\textbf{System Requirements} & \textbf{13--16} \\
 \hline
-\textbf{6} & \textbf{System Design} & \textbf{16--18} \\
+\textbf{6} & \hspace{0.4cm}\textbf{System Design} & \textbf{17--19} \\
 \hline
-\textbf{7} & \textbf{Module Description} & \textbf{19--21} \\
+\textbf{7} & \hspace{0.4cm}\textbf{Module Description} & \textbf{20--22} \\
 \hline
-\textbf{8} & \textbf{Implementation Details} & \textbf{22--24} \\
+\textbf{8} & \hspace{0.4cm}\textbf{Implementation Details} & \textbf{23--25} \\
 \hline
-\textbf{9} & \textbf{Testing and Results} & \textbf{25--27} \\
+\textbf{9} & \hspace{0.4cm}\textbf{Testing and Results} & \textbf{26--28} \\
 \hline
-\textbf{10} & \textbf{Conclusion} & \textbf{28--29} \\
+\textbf{10} & \hspace{0.4cm}\textbf{Conclusion} & \textbf{29--30} \\
 \hline
- & \textbf{Reference} & \textbf{30--31} \\
+ & \hspace{0.4cm}\textbf{Reference} & \textbf{31--32} \\
 \hline
 \end{tabular}
 \end{center}
