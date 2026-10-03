@@ -1,8 +1,9 @@
-\newpage
-\noindent{\Large \textbf{CHAPTER 9}}\par
-\vspace{0.2cm}
-\noindent{\Large \textbf{TESTING AND RESULTS}}\par
-\vspace{0.4cm}
+\vspace{1.0cm}
+\noindent{\textbf{CHAPTER 9}}\par
+\label{chap:testing}
+\vspace{0.15cm}
+\noindent{\textbf{TESTING AND RESULTS}}\par
+\vspace{0.3cm}
 
 \subsection*{9.1 Introduction}
 Testing is a critical phase in the development of the CypherRoll system to ensure that all gaming, cryptographic, and financial settlement components function correctly, securely, and efficiently. The objective of testing is to validate the system against its functional requirements, identify potential vulnerabilities, and ensure stable performance under concurrent load.
@@ -12,7 +13,7 @@ The CypherRoll platform was evaluated across both controlled local sandboxes and
 \begin{itemize}[leftmargin=1.5em]
     \item \textbf{Blockchain Testnets:} The escrow vault was deployed and tested on the \textbf{Ethereum Sepolia} and \textbf{Base Sepolia} test networks using MetaMask, enabling zero-cost financial transaction testing with free faucet ETH.
     \item \textbf{Local Application Server:} Next.js 14 development and production build servers running on Node.js v20.
-    \item \textbf{Statistical Test Harness:} Automated verification scripts (\texttt{tests/test\_provably\_fair.js}) utilizing Node.js Crypto to simulate thousands of consecutive gaming rounds.
+    \item \textbf{Statistical Test Harness:} Automated verification scripts (\texttt{tests/test\_provably\_fair.js}) using the native Node.js crypto module to execute thousands of consecutive gaming rounds.
 \end{itemize}
 
 \subsection*{9.3 Functional Testing}
@@ -38,7 +39,7 @@ Performance metrics were gathered across the client, backend, and blockchain int
 \begin{table}[h!]
 \centering
 \renewcommand{\arraystretch}{1.25}
-\begin{tabularx}{\textwidth}{@{} l l l X @{}}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{4.2cm} >{\centering\arraybackslash}p{2.3cm} >{\centering\arraybackslash}p{2.1cm} >{\raggedright\arraybackslash}X @{}}
 \toprule
 \textbf{Metric / Operation} & \textbf{Observed Latency} & \textbf{Standard Target} & \textbf{Assessment} \\
 \midrule
@@ -57,8 +58,8 @@ Base Sepolia Receipt Query & 240 ms & $\le 2000$ ms & Fast Layer-2 JSON-RPC conf
 To rigorously confirm statistical fairness, an automated Monte Carlo simulation of $N = 10,000$ consecutive rounds was executed via \texttt{tests/test\_provably\_fair.js}:
 \begin{figure}[h!]
 \centering
-\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,title=\textbf{Verification Output: tests/test\_provably\_fair.js}]
-\small
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,left=2mm,right=2mm,top=2mm,bottom=2mm,title=\textbf{Verification Output: tests/test\_provably\_fair.js}]
+\footnotesize
 \begin{verbatim}
 === RUNNING CYPHERROLL PROVABLY FAIR VERIFICATION SUITE ===
 1. Server Seed Hash (Pre-committed):
@@ -88,3 +89,4 @@ Despite successful testing, several real-world limitations were noted:
 This chapter evaluated the testing methodologies, security verification protocols, and performance benchmarks of CypherRoll. The platform passed all cryptographic and functional tests with a 100\% success rate.
 
 The next chapter will conclude the report, summarizing the achievements, broader impact, and future research roadmap.
+\label{chap:testing_end}

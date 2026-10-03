@@ -1,8 +1,9 @@
-\newpage
-\noindent{\Large \textbf{CHAPTER 4}}\par
-\vspace{0.2cm}
-\noindent{\Large \textbf{PROPOSED SYSTEM}}\par
-\vspace{0.4cm}
+\vspace{1.0cm}
+\noindent{\textbf{CHAPTER 4}}\par
+\label{chap:proposed}
+\vspace{0.15cm}
+\noindent{\textbf{PROPOSED SYSTEM}}\par
+\vspace{0.3cm}
 
 \subsection*{4.1 Introduction}
 To overcome the severe limitations and vulnerabilities of centralized gaming platforms, the CypherRoll system proposes a hybrid Web3 gaming architecture that integrates cryptographic provable fairness with non-custodial smart contracts. The proposed system is designed to provide a secure, transparent, and mathematically tamper-proof environment for playing interactive 3D casino games.
@@ -34,7 +35,7 @@ The operational lifecycle of the CypherRoll system proceeds as follows:
     $$\mathcal{H} = \text{HMAC-SHA256}(S_{\text{srv}}, \; S_{\text{cli}} : N)$$
     The outcome is mapped deterministically to a dice roll or crash multiplier. The Three.js 3D canvas animates the roll, and the player's balance updates in the ACID ledger with row-level locks.
     \item \textbf{Cryptographic Withdrawal (EIP-712):} When the user clicks withdraw, \texttt{POST /api/cashier/withdraw} validates their balance and emits an EIP-712 typed signature voucher signed by the casino operator.
-    \item \textbf{On-Chain Settlement:} The user submits the voucher to \texttt{CypherRollVault.withdraw()} on-chain via MetaMask, triggering autonomous token release directly into the user's wallet.
+    \item \textbf{On-Chain Settlement:} The user submits the operator-signed withdrawal voucher directly to \texttt{CypherRollVault.sol} via MetaMask, triggering autonomous token release straight into the player's wallet.
 \end{enumerate}
 
 \subsection*{4.5 Advantages of the Proposed System}
@@ -60,3 +61,4 @@ Operationally, the system is intuitive and user-friendly. Users familiar with We
 This chapter outlined the proposed CypherRoll system, including its architectural overview, key features, working methodology, advantages, and technical, economic, and operational feasibility. The proposed architecture solves the fundamental challenges of centralized gambling by introducing cryptographic fairness and non-custodial smart contract security.
 
 The next chapter will detail the hardware, software, functional, and non-functional system requirements necessary for implementing and running the platform.
+\label{chap:proposed_end}

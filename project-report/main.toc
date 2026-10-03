@@ -1,0 +1,50 @@
+\contentsline {section}{\numberline {1}Abstract}{5}{section.1}%
+\contentsline {section}{Abstract}{5}{section.1}%
+\contentsline {section}{\numberline {2}Introduction and Problem Statement}{6}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Background and Context}{6}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Problem Statement}{6}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Project Objectives}{6}{subsection.2.3}%
+\contentsline {section}{\numberline {3}System Architecture and Technical Design}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Architectural Paradigm: 3-Tier Hybridization}{7}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Component Decomposition}{7}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Tier 1: Presentation \& 3D Client Layer}{7}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}Tier 2: Application, Fairness \& Logic Layer}{7}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}Tier 3: Persistence \& On-Chain Settlement Layer}{8}{subsubsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.3}Tech Stack Matrix}{9}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Mathematical Foundations of Provable Fairness}{9}{section.4}%
+\contentsline {subsection}{\numberline {4.1}The Provably Fair Paradigm}{9}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}CypherDice Mathematical Mechanics}{9}{subsection.4.2}%
+\contentsline {paragraph}{Payout Multiplier Formula \& House Edge}{10}{section*.2}%
+\contentsline {subsection}{\numberline {4.3}CypherCrash Mathematical Mechanics}{11}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Bankroll Risk Management: Kelly Criterion Cap}{11}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Smart Contract Architecture and Settlement}{12}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Non-Custodial Escrow Vault: CypherRollVault.sol}{12}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}EIP-712 Structured Data Cryptographic Authorization}{12}{subsection.5.2}%
+\contentsline {paragraph}{EIP-712 Domain Separator}{12}{section*.3}%
+\contentsline {paragraph}{Withdrawal Struct Typehash}{12}{section*.4}%
+\contentsline {subsection}{\numberline {5.3}Smart Contract Source Code}{12}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Security Invariants Enforced by the Vault}{15}{subsection.5.4}%
+\contentsline {section}{\numberline {6}MetaMask and Testnet Integration Lifecycle}{15}{section.6}%
+\contentsline {subsection}{\numberline {6.1}MetaMask and EIP-1193 Injected Provider Architecture}{15}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Sign-In with Ethereum (SIWE / EIP-4361)}{15}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Testnet Architecture: Sepolia and Base Sepolia}{15}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Acquiring Free Testnet Gas Assets (Faucets)}{15}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Deposit Receipt Verification \& Idempotency}{16}{subsection.6.5}%
+\contentsline {section}{\numberline {7}Full-Stack Implementation and 3D WebGL Pipeline}{18}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Frontend Architecture and Design Philosophy}{18}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Hardware-Accelerated 3D WebGL Engine}{18}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Database Schema and ACID Ledger Design}{18}{subsection.7.3}%
+\contentsline {section}{\numberline {8}Security, AML Compliance, and Risk Controls}{19}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Threat Model and Defense-in-Depth}{19}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Automated OFAC Sanctions Screening and AML Oracle}{20}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Client-Side Proof-of-Work (PoW) Rate Limiting}{20}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}Tiered Treasury and Multi-Sig Governance}{20}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Experimental Results and Performance Analysis}{20}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Provably Fair Statistical Distribution Verification}{20}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Latency and Throughput Benchmarks}{21}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Smart Contract Gas Consumption and Cost Analysis}{21}{subsection.9.3}%
+\contentsline {section}{\numberline {10}Conclusion, Limitations, and Future Work}{21}{section.10}%
+\contentsline {subsection}{\numberline {10.1}Summary of Technical Achievements}{21}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Limitations and Real-World Constraints}{23}{subsection.10.2}%
+\contentsline {subsection}{\numberline {10.3}Future Research and Development Roadmap}{23}{subsection.10.3}%
+\contentsline {section}{References}{24}{section*.5}%

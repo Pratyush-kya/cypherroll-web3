@@ -1,8 +1,9 @@
-\newpage
-\noindent{\Large \textbf{CHAPTER 6}}\par
-\vspace{0.2cm}
-\noindent{\Large \textbf{SYSTEM DESIGN}}\par
-\vspace{0.4cm}
+\vspace{1.0cm}
+\noindent{\textbf{CHAPTER 6}}\par
+\label{chap:design}
+\vspace{0.15cm}
+\noindent{\textbf{SYSTEM DESIGN}}\par
+\vspace{0.3cm}
 
 \subsection*{6.1 Introduction}
 System design defines how the CypherRoll platform is structured and how its constituent frontend, backend, database, and blockchain components interact to deliver seamless, tamper-proof gaming functionality. The system follows a modular, layered 3-tier hybrid architecture that synthesizes high-performance client rendering, off-chain provably fair outcome generation, and on-chain non-custodial smart contract settlement.
@@ -12,8 +13,8 @@ The CypherRoll platform is built using a multi-layer architecture consisting of 
 
 \begin{figure}[h!]
 \centering
-\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,title=\textbf{Figure 6.1: CypherRoll 3-Tier Architecture High-Level Design}]
-\small
+\begin{tcolorbox}[colback=gray!5,colframe=blue!70!black,left=2mm,right=2mm,top=2mm,bottom=2mm,title=\textbf{Figure 6.1: CypherRoll 3-Tier Architecture High-Level Design}]
+\scriptsize
 \begin{verbatim}
 +-------------------------------------------------------------------------+
 |                       TIER 1: PRESENTATION LAYER                        |
@@ -49,7 +50,7 @@ The presentation layer is developed using Next.js 14, React, and Three.js. It al
 
 The application layer comprises Next.js API Routes and cryptographic Node.js modules. It handles SIWE authentication, verifies on-chain deposit transactions, computes deterministic outcomes, and signs EIP-712 withdrawal authorizations.
 
-The blockchain and settlement layer consists of the Solidity smart contract (\texttt{CypherRollVault.sol}) deployed across Ethereum Sepolia and Base Sepolia, enforcing non-custodial custody and autonomous fund release upon cryptographic signature verification.
+The blockchain and settlement layer comprises the Solidity smart contract (\texttt{CypherRollVault.sol}) deployed across Ethereum Sepolia and Base Sepolia, enforcing non-custodial custody and autonomous fund release upon cryptographic signature verification.
 
 \subsection*{6.3 Component Design}
 The system is composed of several interconnected components:
@@ -90,3 +91,4 @@ Security is a foundational pillar of the CypherRoll system:
 This chapter detailed the comprehensive system design of CypherRoll, including its 3-tier hybrid architecture, component structure, data flow, database schema, workflow, and security considerations.
 
 The next chapter will describe the internal modules of the system in detail.
+\label{chap:design_end}

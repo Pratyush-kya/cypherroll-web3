@@ -4,7 +4,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{mathptmx} % Times New Roman font matching academic report guidelines
-\usepackage[margin=1in,headheight=15pt,bottom=1in]{geometry}
+\usepackage[left=1.25in,right=1.0in,top=1.0in,bottom=1.0in,headheight=15pt]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{tabularx}
@@ -15,11 +15,20 @@
 \usepackage{tcolorbox}
 \usepackage{fancyhdr}
 \usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{microtype}
 \usepackage[hyphens]{url}
 \usepackage[colorlinks=true, linkcolor=blue!80!black, urlcolor=blue!70!black, citecolor=green!60!black]{hyperref}
 
-% --- Line Spacing ---
-\renewcommand{\baselinestretch}{1.2}
+% --- Line Spacing & Paragraph Alignment (Matching Centurion University sample) ---
+\renewcommand{\baselinestretch}{1.18}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\sloppy
+
+% --- Subsection Formatting ---
+\titleformat*{\subsection}{\normalsize\bfseries}
+\titlespacing*{\subsection}{0pt}{10pt}{2pt}
 
 % --- Code Listing Configuration ---
 \lstdefinelanguage{Solidity}{
@@ -50,17 +59,24 @@
     breakatwhitespace=false
 }
 
-% --- Header & Footer Configuration (Matching sample 'X | Page') ---
+% --- Front Matter Style (Centered Roman numerals: II, III, IV, V) ---
+\fancypagestyle{frontmatterstyle}{
+    \fancyhf{}
+    \fancyfoot[C]{\normalsize\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% --- Chapter Body Style (Left-aligned 'X | Page') ---
 \pagestyle{fancy}
 \fancyhf{}
-\fancyfoot[L]{\small\thepage\,$|$\,Page}
+\fancyfoot[L]{\normalsize\thepage\,$|$\,Page}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
 
-% Apply same footer to plain pages (first page of chapters)
 \fancypagestyle{plain}{
     \fancyhf{}
-    \fancyfoot[L]{\small\thepage\,$|$\,Page}
+    \fancyfoot[L]{\normalsize\thepage\,$|$\,Page}
     \renewcommand{\headrulewidth}{0pt}
     \renewcommand{\footrulewidth}{0pt}
 }
