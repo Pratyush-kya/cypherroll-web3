@@ -107,7 +107,11 @@ export default function CashierModal({
         onClose();
       }, 1500);
     } catch (err: any) {
-      setErrorMsg(err.message || 'MetaMask transaction rejected or failed');
+      let msg = err?.shortMessage || err?.message || 'MetaMask transaction rejected or failed';
+      if (typeof msg === 'string' && (msg.includes('insufficient funds') || msg.includes('exceeds the balance'))) {
+        msg = 'Insufficient wallet funds: You need ETH to cover both the amount and gas fee. Switch to Base Sepolia testnet to use free faucet ETH, or use "Simulate Instant Deposit" below.';
+      }
+      setErrorMsg(msg);
       setOnChainStatus(null);
     } finally {
       setIsSubmitting(false);
@@ -456,6 +460,27 @@ export default function CashierModal({
                     {onChainStatus && (
                       <div className="text-[11px] font-mono text-amber-300 animate-pulse pt-1">
                         {onChainStatus}
+                      </div>
+                    )}
+
+                    {evmBalance && parseFloat(evmBalance.formatted) < (parseFloat(ethDepositAmount) || 0.001) && (
+                      <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 text-[10px] font-mono text-amber-300 space-y-1">
+                        <div className="font-bold flex items-center gap-1">
+                          <span>⚠️</span> Low Wallet Balance ({parseFloat(evmBalance.formatted).toFixed(4)} {evmBalance.symbol})
+                        </div>
+                        <div className="text-slate-300 text-[10px] leading-relaxed">
+                          To test without spending real money: Switch MetaMask to <strong>Base Sepolia</strong> testnet (free faucet ETH), or click <strong>"Simulate Instant Deposit"</strong> below for instant zero-gas testing.
+                        </div>
+                        <div className="pt-0.5">
+                          <a
+                            href="https://www.alchemy.com/faucets/base-sepolia"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline font-bold inline-flex items-center gap-1"
+                          >
+                            <span>Claim Free Base Sepolia Faucet ETH ↗</span>
+                          </a>
+                        </div>
                       </div>
                     )}
                   </div>
